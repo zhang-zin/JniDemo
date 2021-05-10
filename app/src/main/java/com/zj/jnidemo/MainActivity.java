@@ -25,27 +25,11 @@ public class MainActivity extends AppCompatActivity {
         TextView tv = findViewById(R.id.sample_text);
         tv.setText(person.toString());
 
-        test(false,
-                (byte) 1,
-                ',',
-                (short) 3,
-                4,
-                3.3f,
-                4.2d,
-                "李四",
-                28,
-                new int[]{1, 2, 3},
-                new String[]{"1", "2", "#"},
-                new Person("张三"),
-                new boolean[]{false, true, true});
-
+        get();
     }
 
-    /**
-     * A native method that is implemented by the 'native-lib' native library,
-     * which is packaged with this application.
-     */
-    public native String stringFromJNI();
+
+    public native void get();
 
     public native void changeName(String name);
 
@@ -70,6 +54,7 @@ public class MainActivity extends AppCompatActivity {
 
     /**
      * C++生成Person对象
+     *
      * @return person
      */
     public native Person getPerson();

@@ -10,6 +10,8 @@
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, TAG, __VA_ARGS__)
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, TAG, __VA_ARGS__)
 
+extern "C" int main();
+
 // 1.基本类型
 // java类型       JNI类型         c/c++类型
 // boolean       jboolean      unsigned char(无符号8位整型)
@@ -190,4 +192,10 @@ Java_com_zj_jnidemo_MainActivity_getPerson(JNIEnv *env, jobject thiz) {
     LOGE("Person: %s", itemStr2);
     return person;
 
+}extern "C"
+
+JNIEXPORT void JNICALL
+Java_com_zj_jnidemo_MainActivity_get(JNIEnv *env, jobject thiz) {
+    int i = main();
+    LOGE("native get: %d\n", i);
 }
