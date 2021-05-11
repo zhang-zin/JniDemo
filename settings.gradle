@@ -1,2 +1,3 @@
+include ':ffmpeg_lib'
 include ':app'
 rootProject.name = "JniDemo"
