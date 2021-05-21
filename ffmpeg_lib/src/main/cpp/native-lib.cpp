@@ -1,6 +1,5 @@
 #include <jni.h>
 #include <string>
-#include <android/log.h>
 #include <iostream>
 #include "JNICallback.h"
 #include "MediaPlayer.h"
@@ -8,13 +7,6 @@
 extern "C" {
 #include <libavutil/avutil.h>
 }
-
-#define TAG "JNI"
-
-//__VA_ARGS__ 代表可变参数
-#define LOGD(...) __android_log_print(ANDROID_LOG_DEBUG, TAG, __VA_ARGS__)
-#define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, TAG, __VA_ARGS__)
-#define LOGI(...) __android_log_print(ANDROID_LOG_INFO, TAG, __VA_ARGS__)
 
 
 JavaVM *vm = nullptr;

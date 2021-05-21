@@ -1,12 +1,14 @@
 #include "MediaPlayer.h"
 
 MediaPlayer::MediaPlayer(const char *path, JNICallback *pCallback) {
+    LOGE("MediaPlayer");
     this->data_source = new char[strlen(path) + 1];
     stpcpy(this->data_source, path);
     this->callback = pCallback;
 }
 
 MediaPlayer::~MediaPlayer() {
+    LOGE("~MediaPlayer");
     delete data_source;
     delete callback;
 }
@@ -17,12 +19,13 @@ void *task_prepare(void *args) {
     return nullptr;
 }
 
-
 void MediaPlayer::prepare() {
+    LOGE("prepare：开启子线程");
     pthread_create(&pid_prepare, nullptr, task_prepare, this);
 }
 
 void MediaPlayer::prepare_() {
+    LOGE("prepare_：子线程");
     //子线程
     //第一步：打开媒体地址
     formatContext = avformat_alloc_context();
@@ -40,16 +43,15 @@ void MediaPlayer::prepare_() {
     av_dict_free(&avDictionary); //释放字典
     if (r) {
         //打开媒体地址失败
-        /*char *msg = "打开媒体地址失败";
-        callback->onError(THREAD_CHILD, msg);*/
+        errorCallback(r, THREAD_CHILD, FFMPEG_CAN_NOT_OPEN_URL);
         return;
     }
 
     //第二步：查找媒体中的音视频流信息
     r = avformat_find_stream_info(formatContext, nullptr);
     if (r < 0) {
-        /* char *msg = "查找媒体中的音视频流信息失败";
-         callback->onError(THREAD_CHILD, msg);*/
+        //查找媒体中的音视频流信息失败
+        errorCallback(r, THREAD_CHILD, FFMPEG_CAN_NOT_FIND_STREAMS);
         return;
     }
 
@@ -61,25 +63,26 @@ void MediaPlayer::prepare_() {
         AVCodecParameters *parameters = stream->codecpar;
         //第六步：根据编解码参数获取解码器
         AVCodec *avCodec = avcodec_find_decoder(parameters->codec_id);
+        if (!avCodec) {
+            errorCallback(r, THREAD_CHILD, FFMPEG_FIND_DECODER_FAIL);
+        }
         //第七步：编解码上下文，真正干活的
         AVCodecContext *codecContext = avcodec_alloc_context3(avCodec);
         if (!codecContext) {
-            /*char *msg = "编解码上下文失败";
-            callback->onError(THREAD_CHILD, msg);*/
+            //编解码上下文失败
+            errorCallback(r, THREAD_CHILD, FFMPEG_ALLOC_CODEC_CONTEXT_FAIL);
             return;
         }
         //第八步：编解码器设置参数
         r = avcodec_parameters_to_context(codecContext, parameters);
         if (r < 0) {
-            /*char *msg = "编解码上下文设置参数失败";
-            callback->onError(THREAD_CHILD, msg);*/
+            errorCallback(r, THREAD_CHILD, FFMPEG_CODEC_CONTEXT_PARAMETERS_FAIL);
             return;
         }
         //第九步：打开编解码器
         r = avcodec_open2(codecContext, avCodec, nullptr);
         if (r) {
-            /*char *msg = "打开编解码器失败";
-            callback->onError(THREAD_CHILD, msg);*/
+            errorCallback(r, THREAD_CHILD, FFMPEG_OPEN_DECODER_FAIL);
             return;
         }
 
@@ -95,13 +98,20 @@ void MediaPlayer::prepare_() {
     }
 
     if (!audio_channel && !video_channel) {
-        /* char *msg = "失败";
-         callback->onError(THREAD_CHILD, msg);*/
+        errorCallback(r, THREAD_CHILD, FFMPEG_NOMEDIA);
         return;
     }
 
     if (callback) {
         callback->onPrepared(THREAD_CHILD);
+    }
+}
+
+void MediaPlayer::errorCallback(int r, int thread_mode, int code) {
+    if (callback) {
+        char *msg = av_err2str(r);
+        LOGE("prepare_：打开媒体地址失败, msg: %s", msg);
+        callback->onError(thread_mode, code, msg);
     }
 }
 

@@ -12,6 +12,7 @@ private:
     JNIEnv *env = 0;
     jobject job;
     jmethodID methodPrepareId;
+    jmethodID methodErrorId;
 
 public:
 
@@ -21,7 +22,7 @@ public:
 
     void onPrepared(int thread_mode);
 
-    void onError(int thread_mode,char * errorMsg);
+    void onError(int thread_mode,int code,char * errorMsg);
 };
 
 

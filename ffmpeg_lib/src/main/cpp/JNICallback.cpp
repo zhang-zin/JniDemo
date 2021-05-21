@@ -6,6 +6,7 @@ JNICallback::JNICallback(JavaVM *vm, JNIEnv *env, jobject job) {
     this->job = env->NewGlobalRef(job);
     jclass pJclass = env->GetObjectClass(job);
     methodPrepareId = env->GetMethodID(pJclass, "onPrepare", "()V");
+    methodErrorId = env->GetMethodID(pJclass, "onError", "(ILjava/lang/String;)V");
 }
 
 JNICallback::~JNICallback() {
@@ -13,10 +14,6 @@ JNICallback::~JNICallback() {
     env->DeleteGlobalRef(job);
     job = nullptr;
     env = nullptr;
-}
-
-void JNICallback::onError(int thread_mode, char *errorMsg) {
-
 }
 
 void JNICallback::onPrepared(int thread_mode) {
@@ -30,5 +27,19 @@ void JNICallback::onPrepared(int thread_mode) {
         jniEnv->CallVoidMethod(job, methodPrepareId);
         vm->DetachCurrentThread();
     }
+}
 
+void JNICallback::onError(int thread_mode, int code, char *errorMsg) {
+    if (thread_mode == THREAD_MAIN) {
+        LOGE("回调主线程");
+        jstring msg = env->NewStringUTF(errorMsg);
+        env->CallVoidMethod(job, methodErrorId, code, msg);
+    } else {
+        LOGE("回调子线程");
+        JNIEnv *jniEnv;
+        vm->AttachCurrentThread(&jniEnv, nullptr);
+        jstring msg = jniEnv->NewStringUTF(errorMsg);
+        jniEnv->CallVoidMethod(job, methodErrorId, code, msg);
+        vm->DetachCurrentThread();
+    }
 }

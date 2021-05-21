@@ -31,6 +31,8 @@ public:
     void prepare();
 
     void prepare_(); //子线程调用
+
+    void errorCallback(int r, int thread_mode, int code);
 };
 
 
