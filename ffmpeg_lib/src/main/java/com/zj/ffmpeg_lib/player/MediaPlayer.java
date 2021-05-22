@@ -107,6 +107,7 @@ public class MediaPlayer implements LifecycleObserver {
     }
 
     //region native方法
+
     private native void nativePrepare(String path);
 
     private native void nativeStart();

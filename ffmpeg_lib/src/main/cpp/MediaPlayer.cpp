@@ -13,6 +13,15 @@ MediaPlayer::~MediaPlayer() {
     delete callback;
 }
 
+void MediaPlayer::errorCallback(int r, int thread_mode, int code) {
+    if (callback) {
+        char *msg = av_err2str(r);
+        LOGE("prepare_：打开媒体地址失败, msg: %s", msg);
+        callback->onError(thread_mode, code, msg);
+    }
+}
+
+//region prepare
 void *task_prepare(void *args) {
     auto *player = static_cast<MediaPlayer *>(args);
     player->prepare_();
@@ -89,10 +98,10 @@ void MediaPlayer::prepare_() {
         //第十步：从编解码器参数中获取流的类型
         if (parameters->codec_type == AVMediaType::AVMEDIA_TYPE_AUDIO) {
             //音频
-            audio_channel = new AudioChannel();
+            audio_channel = new AudioChannel(i, codecContext);
         } else if (parameters->codec_type == AVMediaType::AVMEDIA_TYPE_VIDEO) {
             //视频
-            video_channel = new VideoChannel();
+            video_channel = new VideoChannel(i, codecContext);
         }
 
     }
@@ -106,12 +115,54 @@ void MediaPlayer::prepare_() {
         callback->onPrepared(THREAD_CHILD);
     }
 }
+//endregion
 
-void MediaPlayer::errorCallback(int r, int thread_mode, int code) {
-    if (callback) {
-        char *msg = av_err2str(r);
-        LOGE("prepare_：打开媒体地址失败, msg: %s", msg);
-        callback->onError(thread_mode, code, msg);
-    }
+//region start
+void *task_start(void *args) {
+    auto *player = static_cast<MediaPlayer *>(args);
+
+    player->start_();
+    return nullptr;
 }
 
+void MediaPlayer::start() {
+    LOGE("start: 开启子线程");
+    isPlaying = true;
+
+    if (video_channel) {
+        video_channel->start();
+    }
+
+    if (audio_channel) {
+        audio_channel->start();
+    }
+
+    //把音视频的压缩包加入到队列
+    pthread_create(&pid_start, nullptr, task_start, this);
+}
+
+void MediaPlayer::start_() {
+    while (isPlaying) {
+        //AVPacket 压缩包，可能是视频或音频
+        AVPacket *packet = av_packet_alloc();
+        int ret = av_read_frame(formatContext, packet);
+        if (!ret) {
+            //ret == 0 ok
+            if (video_channel && video_channel->stream_index == packet->stream_index) {
+                video_channel->packets.insertToQueue(packet)
+            } else if (audio_channel && audio_channel->stream_index == packet->stream_index) {
+
+            }
+
+        } else if (ret == AVERROR_EOF) {
+            //todo
+        } else {
+            break; //av_read_frame 出现了错误，结束当前循环
+        }
+    }
+
+    isPlaying = false;
+    video_channel->stop();
+    audio_channel->stop();
+}
+//endregion
