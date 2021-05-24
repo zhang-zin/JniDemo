@@ -31,7 +31,7 @@ Java_com_zj_ffmpeg_1lib_player_MediaPlayer_nativePrepare(JNIEnv *env, jobject jo
 extern "C"
 JNIEXPORT void JNICALL
 Java_com_zj_ffmpeg_1lib_player_MediaPlayer_nativeStart(JNIEnv *env, jobject thiz) {
-    if (mediaPlayer){
+    if (mediaPlayer) {
 
     }
 }
@@ -46,5 +46,12 @@ extern "C"
 JNIEXPORT void JNICALL
 Java_com_zj_ffmpeg_1lib_player_MediaPlayer_nativeRelease(JNIEnv *env, jobject thiz) {
 
+
+}
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_zj_ffmpeg_1lib_player_MediaPlayer_setSurfaceNative(JNIEnv *env, jobject thiz,
+                                                            jobject surface) {
 
 }

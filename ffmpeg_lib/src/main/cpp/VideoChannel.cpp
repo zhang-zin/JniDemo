@@ -28,7 +28,7 @@ void VideoChannel::start() {
     packets.setWork(1);
     frames.setWork(1);
 
-    //取出队列的压缩包，进行编码 编码之后的原始包 push队列中去
+    //取出队列的压缩包，进行解码 解码之后的原始包 push队列中去
     pthread_create(&pid_video_decode, nullptr, task_video_decode, this);
     //从队列中取出原始包播放
     pthread_create(&pid_video_play, nullptr, task_video_play, this);

@@ -11,8 +11,8 @@ extern "C" {
 class VideoChannel : public BaseChannel {
 
 private:
-    pthread_t pid_video_decode;
-    pthread_t pid_video_play;
+    pthread_t pid_video_decode{};
+    pthread_t pid_video_play{};
 
 public:
     VideoChannel(int stream_index, AVCodecContext *codecContext);
