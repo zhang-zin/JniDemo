@@ -159,6 +159,7 @@ void MediaPlayer::start_() {
 
             }
         } else if (ret == AVERROR_EOF) {
+            LOGE("AVERROR_EOF");
             //todo
         } else {
             LOGE("读取压缩包失败");
