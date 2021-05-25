@@ -1,12 +1,16 @@
 package com.zj.ffmpeg_lib.player;
 
 import android.util.Log;
+import android.view.Surface;
+import android.view.SurfaceHolder;
+import android.view.SurfaceView;
 
+import androidx.annotation.NonNull;
 import androidx.lifecycle.Lifecycle;
 import androidx.lifecycle.LifecycleObserver;
 import androidx.lifecycle.OnLifecycleEvent;
 
-public class MediaPlayer implements LifecycleObserver {
+public class MediaPlayer implements LifecycleObserver, SurfaceHolder.Callback {
 
     static {
         System.loadLibrary("ffmpeg-lib");
@@ -27,13 +31,23 @@ public class MediaPlayer implements LifecycleObserver {
     private String path;
     private OnPreparedListener mOnPreparedListener;
     private OnErrorListener mOnErrorListener;
+    private SurfaceHolder surfaceHolder;
 
     public void setOnPreparedListener(OnPreparedListener onPreparedListener) {
-        this.mOnPreparedListener = mOnPreparedListener;
+        this.mOnPreparedListener = onPreparedListener;
     }
 
     public void setOnErrorListener(OnErrorListener onErrorListener) {
         this.mOnErrorListener = onErrorListener;
+    }
+
+    public void setSurfaceHolder(SurfaceView surfaceView) {
+        if (surfaceHolder != null) {
+            surfaceHolder.removeCallback(this);
+        }
+
+        surfaceHolder = surfaceView.getHolder();
+        surfaceHolder.addCallback(this);
     }
 
     public void setDataSource(String path) {
@@ -93,9 +107,25 @@ public class MediaPlayer implements LifecycleObserver {
                 case FFMPEG_NOMEDIA:
                     msg += ",没有音视频";
                     break;
+                default:
+                    break;
             }
             mOnErrorListener.onError(code, msg);
         }
+    }
+
+    @Override
+    public void surfaceCreated(@NonNull SurfaceHolder holder) {
+
+    }
+
+    @Override
+    public void surfaceChanged(@NonNull SurfaceHolder holder, int format, int width, int height) {
+    }
+
+    @Override
+    public void surfaceDestroyed(@NonNull SurfaceHolder holder) {
+        setSurfaceNative(holder.getSurface());
     }
 
     public interface OnPreparedListener {
@@ -107,6 +137,7 @@ public class MediaPlayer implements LifecycleObserver {
     }
 
     //region native方法
+
     private native void nativePrepare(String path);
 
     private native void nativeStart();
@@ -114,6 +145,8 @@ public class MediaPlayer implements LifecycleObserver {
     private native void nativeStop();
 
     private native void nativeRelease();
+
+    private native void setSurfaceNative(Surface surface);
     //endregion
 
 }

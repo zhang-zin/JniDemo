@@ -1,16 +1,32 @@
-//
-// Created by zhangjin on 2021/5/19.
-//
-
 #ifndef JNIDEMO_VIDEOCHANNEL_H
 #define JNIDEMO_VIDEOCHANNEL_H
 
+#include "BaseChannel.h"
 
-class VideoChannel {
+extern "C" {
+#include <libavutil/imgutils.h>
+#include <libswscale/swscale.h>
+}
+
+class VideoChannel : public BaseChannel {
+
+private:
+    pthread_t pid_video_decode{};
+    pthread_t pid_video_play{};
 
 public:
-    VideoChannel();
+    VideoChannel(int stream_index, AVCodecContext *codecContext);
+
+    ~VideoChannel();
+
+    void start();
+
+    void stop();
+
+    void video_decode();
+
+    void video_play();
+
 };
 
-
-#endif //JNIDEMO_VIDEOCHANNEL_H
+#endif
