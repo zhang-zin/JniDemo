@@ -116,16 +116,16 @@ public class MediaPlayer implements LifecycleObserver, SurfaceHolder.Callback {
 
     @Override
     public void surfaceCreated(@NonNull SurfaceHolder holder) {
-
     }
 
     @Override
     public void surfaceChanged(@NonNull SurfaceHolder holder, int format, int width, int height) {
+        Log.e("JNI","surfaceChanged");
+        setSurfaceNative(holder.getSurface());
     }
 
     @Override
     public void surfaceDestroyed(@NonNull SurfaceHolder holder) {
-        setSurfaceNative(holder.getSurface());
     }
 
     public interface OnPreparedListener {

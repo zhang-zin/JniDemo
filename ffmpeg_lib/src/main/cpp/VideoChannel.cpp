@@ -10,6 +10,10 @@ VideoChannel::~VideoChannel() {
 
 }
 
+void VideoChannel::setRenderCallback(RenderCallback renderCallback) {
+    this->renderCallback = renderCallback;
+}
+
 void *task_video_decode(void *args) {
     auto *video_channel = static_cast<VideoChannel * >( args);
     video_channel->video_decode();
@@ -40,6 +44,7 @@ void VideoChannel::stop() {
 }
 
 void VideoChannel::video_decode() {
+    LOGE("开启子线程进行视频原始包解码");
     AVPacket *packet = nullptr;
     while (isPlaying) {
         int ret = packets.getQueueAndDel(packet); //阻塞式
@@ -63,16 +68,17 @@ void VideoChannel::video_decode() {
             //B帧参考前面成功，参考后面时报，可能是P帧没有出来需要再拿一次
             continue;
         } else if (ret != 0) {
+            LOGE("原始包解码失败");
             break;
         }
         //拿到了原始包
         frames.insertToQueue(frame);
     }
     releaseAVPacket(&packet);
-
 }
 
 void VideoChannel::video_play() {
+    LOGE("从队列取出原始包，播放");
     //从队列取出原始包，播放
 
     // SWS_FAST_BILINEAR == 很快 可能会模糊
@@ -85,6 +91,7 @@ void VideoChannel::video_play() {
     av_image_alloc(dst_data, dst_lineSize, codecContext->width, codecContext->height,
                    AV_PIX_FMT_RGBA, 1);
 
+    LOGE("开始格式转换：YUV --> RGBA");
     SwsContext *sws_ctx = sws_getContext(
             //输入
             codecContext->width,
@@ -123,5 +130,12 @@ void VideoChannel::video_play() {
         );
 
         //渲染工作
+        renderCallback(dst_data[0], codecContext->width, codecContext->height, dst_lineSize[0]);
+        releaseAVFrame(&frame);
     }
+
+    releaseAVFrame(&frame);
+    isPlaying = false;
+    av_free(&dst_data[0]);
+    sws_freeContext(sws_ctx);
 }

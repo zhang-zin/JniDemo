@@ -24,11 +24,14 @@ private:
     VideoChannel *video_channel = 0;
     JNICallback *callback = 0;
     bool isPlaying; //是否播放
+    RenderCallback  renderCallback;
 
 public:
     MediaPlayer(const char *string, JNICallback *pCallback);
 
     ~MediaPlayer();
+
+    void setRenderCallback(RenderCallback renderCallback);
 
     void prepare();
 

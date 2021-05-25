@@ -13,6 +13,10 @@ MediaPlayer::~MediaPlayer() {
     delete callback;
 }
 
+void MediaPlayer::setRenderCallback(RenderCallback renderCallback) {
+    this->renderCallback = renderCallback;
+}
+
 void MediaPlayer::errorCallback(int r, int thread_mode, int code) {
     if (callback) {
         char *msg = av_err2str(r);
@@ -102,8 +106,8 @@ void MediaPlayer::prepare_() {
         } else if (parameters->codec_type == AVMediaType::AVMEDIA_TYPE_VIDEO) {
             //视频
             video_channel = new VideoChannel(i, codecContext);
+            video_channel->setRenderCallback(renderCallback);
         }
-
     }
 
     if (!audio_channel && !video_channel) {
@@ -142,6 +146,7 @@ void MediaPlayer::start() {
 }
 
 void MediaPlayer::start_() {
+    LOGE("将压缩包放入队列");
     while (isPlaying) {
         //AVPacket 压缩包，可能是视频或音频
         AVPacket *packet = av_packet_alloc();
@@ -149,14 +154,14 @@ void MediaPlayer::start_() {
         if (!ret) {
             //ret == 0 ok
             if (video_channel && video_channel->stream_index == packet->stream_index) {
-                video_channel->packets.insertToQueue(packet)
+                video_channel->packets.insertToQueue(packet);
             } else if (audio_channel && audio_channel->stream_index == packet->stream_index) {
 
             }
-
         } else if (ret == AVERROR_EOF) {
             //todo
         } else {
+            LOGE("读取压缩包失败");
             break; //av_read_frame 出现了错误，结束当前循环
         }
     }
@@ -165,4 +170,5 @@ void MediaPlayer::start_() {
     video_channel->stop();
     audio_channel->stop();
 }
+
 //endregion
