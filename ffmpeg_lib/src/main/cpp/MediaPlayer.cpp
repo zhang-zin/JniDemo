@@ -133,9 +133,9 @@ void MediaPlayer::start() {
     LOGE("start: 开启子线程");
     isPlaying = true;
 
-    if (video_channel) {
-        video_channel->start();
-    }
+//    if (video_channel) {
+//        video_channel->start();
+//    }
 
     if (audio_channel) {
         audio_channel->start();
@@ -156,7 +156,7 @@ void MediaPlayer::start_() {
             if (video_channel && video_channel->stream_index == packet->stream_index) {
                 video_channel->packets.insertToQueue(packet);
             } else if (audio_channel && audio_channel->stream_index == packet->stream_index) {
-
+                audio_channel->packets.insertToQueue(packet);
             }
         } else if (ret == AVERROR_EOF) {
             LOGE("AVERROR_EOF");

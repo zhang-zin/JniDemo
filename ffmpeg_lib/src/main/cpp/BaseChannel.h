@@ -4,7 +4,7 @@
 extern "C" {
 #include <libavcodec/avcodec.h>
 }
-
+#include "util.h"
 #include "safe_queue.h"
 
 class BaseChannel {

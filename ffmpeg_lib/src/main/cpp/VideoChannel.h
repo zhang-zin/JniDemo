@@ -2,7 +2,6 @@
 #define JNIDEMO_VIDEOCHANNEL_H
 
 #include "BaseChannel.h"
-#include "util.h"
 
 extern "C" {
 #include <libavutil/imgutils.h>
