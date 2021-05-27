@@ -47,6 +47,11 @@ void VideoChannel::video_decode() {
     LOGE("开启子线程进行视频原始包解码");
     AVPacket *packet = nullptr;
     while (isPlaying) {
+
+        if (isPlaying && frames.size() > 100) {
+            av_usleep(10 * 1000);
+            continue;
+        }
         int ret = packets.getQueueAndDel(packet); //阻塞式
         if (!isPlaying) {
             break;
@@ -57,7 +62,6 @@ void VideoChannel::video_decode() {
         }
 
         ret = avcodec_send_packet(codecContext, packet); //发送AVPacket压缩包到缓冲区
-        releaseAVPacket(&packet); //FFmpeg 缓存了一份AVPacket
         if (ret) {
             break; //avcodec_send_packet出现错误
         }
@@ -69,11 +73,15 @@ void VideoChannel::video_decode() {
             continue;
         } else if (ret != 0) {
             LOGE("原始包解码失败");
+            releaseAVPacket(&packet);
             break;
         }
         //拿到了原始包
         frames.insertToQueue(frame);
+        av_packet_unref(packet);
+        releaseAVPacket(&packet); //FFmpeg 缓存了一份AVPacket
     }
+    av_packet_unref(packet);
     releaseAVPacket(&packet);
 }
 
@@ -131,9 +139,11 @@ void VideoChannel::video_play() {
 
         //渲染工作
         renderCallback(dst_data[0], codecContext->width, codecContext->height, dst_lineSize[0]);
+        av_frame_unref(frame);
         releaseAVFrame(&frame);
     }
 
+    av_frame_unref(frame);
     releaseAVFrame(&frame);
     isPlaying = false;
     av_free(&dst_data[0]);

@@ -133,9 +133,9 @@ void MediaPlayer::start() {
     LOGE("start: 开启子线程");
     isPlaying = true;
 
-//    if (video_channel) {
-//        video_channel->start();
-//    }
+    if (video_channel) {
+        video_channel->start();
+    }
 
     if (audio_channel) {
         audio_channel->start();
@@ -148,6 +148,17 @@ void MediaPlayer::start() {
 void MediaPlayer::start_() {
     LOGE("将压缩包放入队列");
     while (isPlaying) {
+
+        if (video_channel && video_channel->packets.size() > 100) {
+            av_usleep(10 * 1000);
+            continue;
+        }
+
+        if (audio_channel && audio_channel->packets.size() > 100) {
+            av_usleep(10 * 1000);
+            continue;
+        }
+
         //AVPacket 压缩包，可能是视频或音频
         AVPacket *packet = av_packet_alloc();
         int ret = av_read_frame(formatContext, packet);
@@ -159,8 +170,9 @@ void MediaPlayer::start_() {
                 audio_channel->packets.insertToQueue(packet);
             }
         } else if (ret == AVERROR_EOF) {
-            LOGE("AVERROR_EOF");
-            //todo
+            if (video_channel->packets.empty() && audio_channel->packets.empty()) {
+                break;
+            }
         } else {
             LOGE("读取压缩包失败");
             break; //av_read_frame 出现了错误，结束当前循环
