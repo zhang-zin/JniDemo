@@ -93,7 +93,9 @@ void AudioChannel::audio_decode() {
             continue;
         } else if (ret != 0) {
             LOGE("原始包解码失败");
-            releaseAVPacket(&packet);
+            if (frame){
+                releaseAVFrame(&frame);
+            }
             break;
         }
         //拿到了原始包
@@ -159,6 +161,9 @@ int AudioChannel::getPCM() {
         );
         pcm_data_size = samples_per_channel * out_sample_size * out_channels;
     }
+
+    av_frame_unref(frame);
+    releaseAVFrame(&frame);
     return pcm_data_size;
 }
 
