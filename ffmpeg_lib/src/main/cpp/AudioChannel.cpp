@@ -1,8 +1,9 @@
 #include "AudioChannel.h"
 
 
-AudioChannel::AudioChannel(int stream_index, AVCodecContext *avCodecContext) : BaseChannel(
-        stream_index, avCodecContext) {
+AudioChannel::AudioChannel(int stream_index, AVCodecContext *avCodecContext, AVRational time_base)
+        : BaseChannel(
+        stream_index, avCodecContext, time_base) {
     out_channels = av_get_channel_layout_nb_channels(AV_CH_LAYOUT_STEREO); //返回通道数
     out_sample_size = av_get_bytes_per_sample(AV_SAMPLE_FMT_S16); //返回每个样本的字节数
     out_sample_rate = 44100; //采样率
@@ -158,6 +159,9 @@ int AudioChannel::getPCM() {
                 frame->nb_samples // 输入的样本数
         );
         pcm_data_size = samples_per_channel * out_sample_size * out_channels;
+
+        // 音视频同步时间基TimeBase fps25 一秒钟25帧，每一帧25分之1 ，25分之1就是时间基
+        audio_time = frame->best_effort_timestamp * av_q2d(time_base);//时间有单位，ffmepg中有自己的单位：时间基
     }
     return pcm_data_size;
 }

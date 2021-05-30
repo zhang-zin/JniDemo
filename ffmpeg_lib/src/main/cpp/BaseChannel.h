@@ -5,6 +5,7 @@ extern "C" {
 #include <libavcodec/avcodec.h>
 #include <libavutil/time.h>
 }
+
 #include "util.h"
 #include "safe_queue.h"
 
@@ -17,9 +18,12 @@ public:
     bool isPlaying; //播放标记
     AVCodecContext *codecContext = 0; //音视频解码器上下文
 
-    BaseChannel(int stream_index, AVCodecContext *codecContext) :
+    AVRational time_base; //音视频同步，时间基（时间单位）
+
+    BaseChannel(int stream_index, AVCodecContext *codecContext, AVRational time_base) :
             stream_index(stream_index),
-            codecContext(codecContext) {
+            codecContext(codecContext),
+            time_base(time_base) {
         packets.setReleaseCallback(releaseAVPacket);
         frames.setReleaseCallback(releaseAVFrame);
     }

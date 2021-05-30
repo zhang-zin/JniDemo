@@ -1,9 +1,34 @@
 
 #include "VideoChannel.h"
 
-VideoChannel::VideoChannel(int stream_index, AVCodecContext *codecContext) : BaseChannel(
-        stream_index, codecContext) {
+/**
+ * 丢包，原始包不需要考虑关键帧
+ * @param q
+ */
+void dropAVFrame(SafeQueue<AVFrame *> *queue) {
+    if (!queue->empty()) {
+        AVFrame *avFrame = nullptr;
+        queue->getQueueAndDel(avFrame);
+        BaseChannel::releaseAVFrame(&avFrame);
+    }
+}
 
+void dropAVPacket(SafeQueue<AVPacket *> *queue) {
+    if (!queue->empty()) {
+        AVPacket *packet = nullptr;
+        queue->getQueueAndDel(packet);
+        if (packet->flags != AV_PKT_FLAG_KEY) {
+            BaseChannel::releaseAVPacket(&packet);
+        }
+    }
+}
+
+VideoChannel::VideoChannel(int stream_index, AVCodecContext *codecContext, AVRational time_base,
+                           int fps) : BaseChannel(
+        stream_index, codecContext, time_base) {
+    this->fps = fps;
+    frames.setSyncCallback(dropAVFrame);
+    packets.setSyncCallback(dropAVPacket);
 }
 
 VideoChannel::~VideoChannel() {
@@ -137,6 +162,35 @@ void VideoChannel::video_play() {
                 dst_lineSize
         );
 
+        //音视频同步 fps间隔时间加入
+        double extra_delay = frame->repeat_pict / (2 * fps); //额外延迟时间
+        double fps_delay = 1.0 / fps;
+        double real_delay = extra_delay + fps_delay; //当前帧的延迟时间
+
+        //av_usleep(real_delay * 1000000); //fps间隔时间
+
+        double video_time = frame->best_effort_timestamp * av_q2d(time_base);
+        double audio_time = audioChannel->audio_time;
+
+        //判断音频和视频时间插值
+        double time_diff = video_time - audio_time;
+//        if (time_diff > 0) {
+//            // 视频时间>音频时间，控制视频播放慢一些
+//            if (time_diff > 1) {
+//                //音频与视频差距很大
+//                av_usleep((real_delay * 2) * 1000000);
+//            } else {
+//                av_usleep((real_delay + time_diff) * 1000000);
+//            }
+//        } else if (time_diff < 0) {
+//            // 视频时间<音频时间，控制视频播放快一些 丢包
+//            // 不能丢I帧 frames 和 packets队列中
+//            if (fabs(time_diff) <= 0.05) {
+//                frames.sync();
+//                continue;
+//            }
+//        }
+
         //渲染工作
         renderCallback(dst_data[0], codecContext->width, codecContext->height, dst_lineSize[0]);
         av_frame_unref(frame);
@@ -148,4 +202,8 @@ void VideoChannel::video_play() {
     isPlaying = false;
     av_free(&dst_data[0]);
     sws_freeContext(sws_ctx);
+}
+
+void VideoChannel::setAudioChannel(AudioChannel *audio_channel) {
+    this->audioChannel = audio_channel;
 }

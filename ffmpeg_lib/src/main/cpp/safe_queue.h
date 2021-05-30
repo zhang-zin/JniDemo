@@ -10,6 +10,7 @@ template<typename T>
 class SafeQueue {
 private:
     typedef void (*ReleaseCallback)(T *); //回调 用来释放T的内容
+    typedef void (*SyncCallback)(SafeQueue<T> *); //
 
 private:
     queue<T> queue;
@@ -17,6 +18,7 @@ private:
     pthread_cond_t cond; // 等待和唤醒
     int work; //标记队列是否工作
     ReleaseCallback releaseCallback;
+    SyncCallback syncCallback;
 
 public:
     SafeQueue() {
@@ -31,6 +33,16 @@ public:
 
     void setReleaseCallback(ReleaseCallback releaseCallback) {
         this->releaseCallback = releaseCallback;
+    }
+
+    void setSyncCallback(SyncCallback syncCallback) {
+        this->syncCallback = syncCallback;
+    }
+
+    void sync() {
+        pthread_mutex_lock(&mutex);
+        syncCallback(this);
+        pthread_mutex_unlock(&mutex);
     }
 
     /**
@@ -76,7 +88,7 @@ public:
         return ret;
     }
 
-    void setWork(int work){
+    void setWork(int work) {
         pthread_mutex_lock(&mutex);
         this->work = work;
 
@@ -85,15 +97,15 @@ public:
         pthread_mutex_unlock(&mutex);
     }
 
-    int empty(){
+    int empty() {
         return queue.empty();
     }
 
-    int size(){
+    int size() {
         return queue.size();
     }
 
-    void clear(){
+    void clear() {
         pthread_mutex_lock(&mutex); // 多线程的访问（先锁住）
 
         unsigned int size = queue.size();
@@ -101,7 +113,7 @@ public:
         for (int i = 0; i < size; ++i) {
             //循环释放队列中的数据
             T value = queue.front();
-            if(releaseCallback){
+            if (releaseCallback) {
                 releaseCallback(&value); // 让外界去释放堆区空间
             }
             queue.pop(); // 删除队列中的数据，让队列为0

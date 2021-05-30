@@ -99,13 +99,24 @@ void MediaPlayer::prepare_() {
             return;
         }
 
+        AVRational time_base = stream->time_base;
+
         //第十步：从编解码器参数中获取流的类型
         if (parameters->codec_type == AVMediaType::AVMEDIA_TYPE_AUDIO) {
             //音频
-            audio_channel = new AudioChannel(i, codecContext);
+            audio_channel = new AudioChannel(i, codecContext, time_base);
         } else if (parameters->codec_type == AVMediaType::AVMEDIA_TYPE_VIDEO) {
             //视频
-            video_channel = new VideoChannel(i, codecContext);
+
+            if (stream->disposition & AV_DISPOSITION_ATTACHED_PIC) {
+                //封面流
+                continue;
+            }
+
+            AVRational fps_rational = stream->avg_frame_rate;  //fps
+            int fps = av_q2d(fps_rational);
+
+            video_channel = new VideoChannel(i, codecContext, time_base, fps);
             video_channel->setRenderCallback(renderCallback);
         }
     }
@@ -134,6 +145,7 @@ void MediaPlayer::start() {
     isPlaying = true;
 
     if (video_channel) {
+        video_channel->setAudioChannel(audio_channel);
         video_channel->start();
     }
 

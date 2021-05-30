@@ -2,6 +2,7 @@
 #define JNIDEMO_VIDEOCHANNEL_H
 
 #include "BaseChannel.h"
+#include "AudioChannel.h"
 
 extern "C" {
 #include <libavutil/imgutils.h>
@@ -17,8 +18,12 @@ private:
     pthread_t pid_video_play{};
     RenderCallback renderCallback;
 
+    AudioChannel *audioChannel;
+
+    int fps;
+
 public:
-    VideoChannel(int stream_index, AVCodecContext *codecContext);
+    VideoChannel(int stream_index, AVCodecContext *codecContext, AVRational time_base, int fps);
 
     ~VideoChannel();
 
@@ -32,6 +37,7 @@ public:
 
     void setRenderCallback(RenderCallback renderCallback);
 
+    void setAudioChannel(AudioChannel *audio_channel);
 };
 
 #endif

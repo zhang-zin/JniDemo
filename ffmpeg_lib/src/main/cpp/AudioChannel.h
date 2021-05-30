@@ -30,6 +30,8 @@ public:
     // 播放器队列接口
     SLAndroidSimpleBufferQueueItf bqPlayerBufferQueue = 0;
 
+    double audio_time;
+
 public:
     int out_channels;
     int out_sample_size;
@@ -39,7 +41,7 @@ public:
     SwrContext *swr_ctx = 0;
 
 public:
-    AudioChannel(int stream_index, AVCodecContext *avCodecContext);
+    AudioChannel(int stream_index, AVCodecContext *avCodecContext, AVRational time_base);
 
     virtual ~AudioChannel();
 
