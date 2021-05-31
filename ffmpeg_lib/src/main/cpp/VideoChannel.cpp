@@ -104,7 +104,9 @@ void VideoChannel::video_decode() {
             continue;
         } else if (ret != 0) {
             LOGE("原始包解码失败");
-            releaseAVPacket(&packet);
+            if (frame){
+                releaseAVFrame(&frame);
+            }
             break;
         }
         //拿到了原始包
