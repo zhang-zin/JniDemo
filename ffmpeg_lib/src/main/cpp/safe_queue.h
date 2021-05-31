@@ -10,7 +10,7 @@ template<typename T>
 class SafeQueue {
 private:
     typedef void (*ReleaseCallback)(T *); //回调 用来释放T的内容
-    typedef void (*SyncCallback)(SafeQueue<T> *); //
+    typedef void (*SyncCallback)(queue<T> &); //
 
 private:
     queue<T> queue;
@@ -41,7 +41,7 @@ public:
 
     void sync() {
         pthread_mutex_lock(&mutex);
-        syncCallback(this);
+        syncCallback(queue);
         pthread_mutex_unlock(&mutex);
     }
 

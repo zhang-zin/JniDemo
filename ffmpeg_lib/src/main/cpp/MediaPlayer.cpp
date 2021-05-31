@@ -105,6 +105,7 @@ void MediaPlayer::prepare_() {
         if (parameters->codec_type == AVMediaType::AVMEDIA_TYPE_AUDIO) {
             //音频
             audio_channel = new AudioChannel(i, codecContext, time_base);
+            LOGE("创建音频流通道：%d",i);
         } else if (parameters->codec_type == AVMediaType::AVMEDIA_TYPE_VIDEO) {
             //视频
 
@@ -118,6 +119,7 @@ void MediaPlayer::prepare_() {
 
             video_channel = new VideoChannel(i, codecContext, time_base, fps);
             video_channel->setRenderCallback(renderCallback);
+            LOGE("创建视频流通道：%d",i);
         }
     }
 
@@ -135,7 +137,6 @@ void MediaPlayer::prepare_() {
 //region start
 void *task_start(void *args) {
     auto *player = static_cast<MediaPlayer *>(args);
-
     player->start_();
     return nullptr;
 }
@@ -170,7 +171,7 @@ void MediaPlayer::start_() {
             av_usleep(10 * 1000);
             continue;
         }
-
+        LOGE("将压缩包放入队列");
         //AVPacket 压缩包，可能是视频或音频
         AVPacket *packet = av_packet_alloc();
         int ret = av_read_frame(formatContext, packet);
@@ -190,6 +191,7 @@ void MediaPlayer::start_() {
             break; //av_read_frame 出现了错误，结束当前循环
         }
     }
+    LOGE("将压缩包放入结束");
 
     isPlaying = false;
     video_channel->stop();

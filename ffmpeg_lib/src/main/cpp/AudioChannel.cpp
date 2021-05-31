@@ -130,39 +130,83 @@ void bqPlayerCallback(SLAndroidSimpleBufferQueueItf bq, void *args) {
  * 给out_buffers赋值和确定大小
  * @return 返回重采样之后的大小
  */
+
 int AudioChannel::getPCM() {
     int pcm_data_size = 0;
-    AVFrame *frame = nullptr;
-    if (isPlaying) {
+
+    // 获取PCM数据
+    // PCM数据在哪里？答：队列 frames队列中  frame->data == PCM数据(待 重采样   32bit)
+
+    AVFrame *frame = 0;
+    while (isPlaying) {
         int ret = frames.getQueueAndDel(frame);
-        if (!ret) {
-            return 0;
+        if (!isPlaying) {
+            break; // 如果关闭了播放，跳出循环，releaseAVPacket(&pkt);
+        }
+        if (!ret) { // ret == 0
+            continue; // 哪怕是没有成功，也要继续（假设：你生产太慢(原始包加入队列)，我消费就等一下你）
         }
 
-        //开始重采样
+        // 开始重采样
+
+        // 来源：10个48000   ---->  目标:44100  11个44100
         // 获取单通道的样本数 (计算目标样本数： ？ 10个48000 --->  48000/44100因为除不尽  11个44100)
-        int dst_nb_samples = av_rescale_rnd(
-                swr_get_delay(swr_ctx, frame->sample_rate) +
-                frame->nb_samples, // 获取下一个输入样本相对于下一个输出样本将经历的延迟
-                out_sample_size,     // 输出采样率
-                frame->sample_rate,  // 输入采样率
-                AV_ROUND_UP     // 先上取 取去11个才能容纳的上
-        );
+        int dst_nb_samples = av_rescale_rnd(swr_get_delay(swr_ctx, frame->sample_rate) + frame->nb_samples, // 获取下一个输入样本相对于下一个输出样本将经历的延迟
+                                            out_sample_rate, // 输出采样率
+                                            frame->sample_rate, // 输入采样率
+                                            AV_ROUND_UP); // 先上取 取去11个才能容纳的上
 
-        int samples_per_channel = swr_convert(
-                swr_ctx,
-                //输出
-                &out_buffers,   //重采样之后的buffers
-                dst_nb_samples, //重采样之后的单通道的样本数
-                //输出
-                (const uint8_t **) frame->data, // 队列的AVFrame * 那的  PCM数据 未重采样的
-                frame->nb_samples // 输入的样本数
-        );
-        pcm_data_size = samples_per_channel * out_sample_size * out_channels;
+        // pcm的处理逻辑
+        // 音频播放器的数据格式是我们自己在下面定义的
+        // 而原始数据（待播放的音频pcm数据）
+        // TODO 重采样工作
+        // 返回的结果：每个通道输出的样本数(注意：是转换后的)    做一个简单的重采样实验(通道基本上都是:1024)
+        int samples_per_channel = swr_convert(swr_ctx,
+                // 下面是输出区域
+                                              &out_buffers,  // 【成果的buff】  重采样后的
+                                              dst_nb_samples, // 【成果的 单通道的样本数 无法与out_buffers对应，所以有下面的pcm_data_size计算】
 
-        // 音视频同步时间基TimeBase fps25 一秒钟25帧，每一帧25分之1 ，25分之1就是时间基
-        audio_time = frame->best_effort_timestamp * av_q2d(time_base);//时间有单位，ffmepg中有自己的单位：时间基
-    }
+                // 下面是输入区域
+                                              (const uint8_t **) frame->data, // 队列的AVFrame * 那的  PCM数据 未重采样的
+                                              frame->nb_samples); // 输入的样本数
+
+        // 由于out_buffers 和 dst_nb_samples 无法对应，所以需要重新计算
+        pcm_data_size = samples_per_channel * out_sample_size * out_channels; // 941通道样本数  *  2样本格式字节数  *  2声道数  =3764
+
+        // 单通道样本数:1024  * 2声道  * 2(16bit)  =  4,096
+
+        // TODO 音视频同步 1
+        // 时间基TimeBase理解：例如：（fps25 一秒钟25帧， 那么每一帧==25分之1，而25分之1就是时间基概念）
+
+        // frame->best_effort_timestamp // 时间有单位：微妙 毫秒 秒 等，但是在FFmpeg里面有自己的单位（时间基TimeBase）
+
+        /*
+          typedef struct AVRational{
+            int num; ///< Numerator   分子
+            int den; ///< Denominator 分母
+        } AVRational;
+         */
+
+        // audio_time == 0.00000 0.0231233 0.035454 就是音频播放的时间搓
+        audio_time = frame->best_effort_timestamp * av_q2d(time_base); // 必须这样计算后，才能拿到真正的时间搓
+        break; // 利用while循环 来写我们的逻辑
+
+    } // while end
+
+    // FFmpeg录制 Mac 麦克风  输出 每一个音频包的size == 4096
+    // 4096是单声道的样本数，  44100是每秒钟采样的数
+    // 采样率 和 样本数的关系？
+    // 答： TODO 单通道样本数:1024  * 2声道  * 2(16bit)  =  4,096 ==  4096是单声道的样本数
+    //      TODO 采样率 44100是每秒钟采样的次数
+
+    // 样本数 = 采样率 * 声道数 * 位声
+
+    // 双声道的样本数？  答： （采样率 * 声道数 * 位声） * 2
+
+    // TODO 第五节课 内存泄漏点 7
+    av_frame_unref(frame); // 减1 = 0 释放成员指向的堆区
+    releaseAVFrame(&frame); // 释放AVFrame * 本身的堆区空间
+
     return pcm_data_size;
 }
 
