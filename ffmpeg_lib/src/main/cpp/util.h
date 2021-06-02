@@ -31,4 +31,6 @@
 #define FFMPEG_NOMEDIA 8
 //endregion
 
+#define DELETE(object) if (object) { delete object; object = 0;}
+
 #endif

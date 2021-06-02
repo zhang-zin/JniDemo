@@ -38,7 +38,7 @@ VideoChannel::VideoChannel(int stream_index, AVCodecContext *codecContext, AVRat
 }
 
 VideoChannel::~VideoChannel() {
-
+    DELETE(audioChannel);
 }
 
 void VideoChannel::setRenderCallback(RenderCallback renderCallback) {
@@ -71,7 +71,15 @@ void VideoChannel::start() {
 }
 
 void VideoChannel::stop() {
+    isPlaying = false;
 
+    pthread_join(pid_video_decode, nullptr);
+    pthread_join(pid_video_play, nullptr);
+
+    packets.setWork(0);
+    packets.clear();
+    frames.setWork(0);
+    frames.clear();
 }
 
 void VideoChannel::video_decode() {
@@ -104,7 +112,7 @@ void VideoChannel::video_decode() {
             continue;
         } else if (ret != 0) {
             LOGE("原始包解码失败");
-            if (frame){
+            if (frame) {
                 releaseAVFrame(&frame);
             }
             break;
@@ -182,24 +190,17 @@ void VideoChannel::video_play() {
 
         //判断音频和视频时间插值
         double time_diff = video_time - audio_time;
-        LOGE("视频时间：%f", video_time);
-        LOGE("音频时间：%f", audio_time);
-        LOGE("音视频时间差：%f", time_diff);
 
         if (time_diff > 0) {
             // 视频时间 > 音频时间： 要等音频，所以控制视频播放慢一点（等音频） 【睡眠】
-            if (time_diff > 1)
-            {   // 说明：音频预视频插件很大，TODO 拖动条 特色场景  音频 和 视频 差值很大，我不能睡眠那么久，否则是大Bug
-                // av_usleep((real_delay + time_diff) * 1000000);
-
+            if (time_diff > 1) {
                 // 如果 音频 和 视频 差值很大，我不会睡很久，我就是稍微睡一下
                 av_usleep((real_delay * 2) * 1000000);
-            }
-            else
-            {   // 说明：0~1之间：音频与视频差距不大，所以可以那（当前帧实际延时时间 + 音视频差值）
+            } else {   // 说明：0~1之间：音频与视频差距不大，所以可以那（当前帧实际延时时间 + 音视频差值）
                 av_usleep((real_delay + time_diff) * 1000000); // 单位是微妙：所以 * 1000000
             }
-        } if (time_diff < 0) {
+        }
+        if (time_diff < 0) {
             // 视频时间 < 音频时间： 要追音频，所以控制视频播放快一点（追音频） 【丢包】
             // 丢帧：不能睡意丢，I帧是绝对不能丢
             // 丢包：在frames 和 packets 中的队列

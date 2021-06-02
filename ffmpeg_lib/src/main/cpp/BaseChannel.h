@@ -8,6 +8,7 @@ extern "C" {
 
 #include "util.h"
 #include "safe_queue.h"
+#include "JNICallback.h"
 
 class BaseChannel {
 
@@ -19,6 +20,12 @@ public:
     AVCodecContext *codecContext = 0; //音视频解码器上下文
 
     AVRational time_base; //音视频同步，时间基（时间单位）
+
+    JNICallback *callback = 0;
+
+    void setJNICallback(JNICallback *jniCallback) {
+        callback = jniCallback;
+    }
 
     BaseChannel(int stream_index, AVCodecContext *codecContext, AVRational time_base) :
             stream_index(stream_index),

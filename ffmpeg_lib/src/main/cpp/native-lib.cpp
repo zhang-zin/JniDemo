@@ -32,8 +32,6 @@ void renderFrame(uint8_t *src_data, int width, int height, int src_lineSize) {
         return;
     }
 
-    LOGE("开始视频渲染");
-
     // 设置窗口的大小、各个属性
     ANativeWindow_setBuffersGeometry(window, width, height, WINDOW_FORMAT_RGBA_8888);
 
@@ -50,8 +48,6 @@ void renderFrame(uint8_t *src_data, int width, int height, int src_lineSize) {
     // 填充WindowBuffer，画面就出来了
     auto *dst_data = static_cast<uint8_t *>(windowBuffer.bits);
     int dst_line_size = windowBuffer.stride * 4;
-    LOGE("dst_line_size：%d", dst_line_size);
-    LOGE("src_lineSize：%d", src_lineSize);
 
     for (int i = 0; i < windowBuffer.height; ++i) { //一行一行的显示
         /**
@@ -98,7 +94,9 @@ Java_com_zj_ffmpeg_1lib_player_MediaPlayer_nativeStart(JNIEnv *env, jobject thiz
 extern "C"
 JNIEXPORT void JNICALL
 Java_com_zj_ffmpeg_1lib_player_MediaPlayer_nativeStop(JNIEnv *env, jobject thiz) {
-
+    if (mediaPlayer) {
+        mediaPlayer->stop();
+    }
 }
 
 extern "C"
@@ -124,4 +122,21 @@ Java_com_zj_ffmpeg_1lib_player_MediaPlayer_setSurfaceNative(JNIEnv *env, jobject
     LOGE("赋值window");
 
     pthread_mutex_unlock(&mutex_t);
+}
+
+extern "C"
+JNIEXPORT jint JNICALL
+Java_com_zj_ffmpeg_1lib_player_MediaPlayer_getDurationNative(JNIEnv *env, jobject thiz) {
+    if (mediaPlayer) {
+        return mediaPlayer->getDuration();
+    }
+    return 0;
+}
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_zj_ffmpeg_1lib_player_MediaPlayer_nativeSeek(JNIEnv *env, jobject thiz, jint progress) {
+    if (mediaPlayer) {
+        mediaPlayer->seek(progress);
+    }
 }

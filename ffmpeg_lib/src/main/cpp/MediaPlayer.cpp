@@ -5,12 +5,15 @@ MediaPlayer::MediaPlayer(const char *path, JNICallback *pCallback) {
     this->data_source = new char[strlen(path) + 1];
     stpcpy(this->data_source, path);
     this->callback = pCallback;
+    pthread_mutex_init(&seek_mutex, nullptr);
 }
 
 MediaPlayer::~MediaPlayer() {
     LOGE("~MediaPlayer");
     delete data_source;
     delete callback;
+
+    pthread_mutex_destroy(&seek_mutex);
 }
 
 void MediaPlayer::setRenderCallback(RenderCallback renderCallback) {
@@ -57,6 +60,7 @@ void MediaPlayer::prepare_() {
     if (r) {
         //打开媒体地址失败
         errorCallback(r, THREAD_CHILD, FFMPEG_CAN_NOT_OPEN_URL);
+        avformat_close_input(&formatContext);
         return;
     }
 
@@ -65,8 +69,12 @@ void MediaPlayer::prepare_() {
     if (r < 0) {
         //查找媒体中的音视频流信息失败
         errorCallback(r, THREAD_CHILD, FFMPEG_CAN_NOT_FIND_STREAMS);
+        avformat_close_input(&formatContext);
         return;
     }
+
+    duration = formatContext->duration / AV_TIME_BASE; //获取视频总时长
+    AVCodecContext *codecContext = nullptr;
 
     //第三步：根据流信息，流个数循环来找
     for (int i = 0; i < formatContext->nb_streams; ++i) {
@@ -80,22 +88,28 @@ void MediaPlayer::prepare_() {
             errorCallback(r, THREAD_CHILD, FFMPEG_FIND_DECODER_FAIL);
         }
         //第七步：编解码上下文，真正干活的
-        AVCodecContext *codecContext = avcodec_alloc_context3(avCodec);
+        codecContext = avcodec_alloc_context3(avCodec);
         if (!codecContext) {
             //编解码上下文失败
             errorCallback(r, THREAD_CHILD, FFMPEG_ALLOC_CODEC_CONTEXT_FAIL);
+            avcodec_free_context(&codecContext);
+            avformat_close_input(&formatContext);
             return;
         }
         //第八步：编解码器设置参数
         r = avcodec_parameters_to_context(codecContext, parameters);
         if (r < 0) {
             errorCallback(r, THREAD_CHILD, FFMPEG_CODEC_CONTEXT_PARAMETERS_FAIL);
+            avcodec_free_context(&codecContext);
+            avformat_close_input(&formatContext);
             return;
         }
         //第九步：打开编解码器
         r = avcodec_open2(codecContext, avCodec, nullptr);
         if (r) {
             errorCallback(r, THREAD_CHILD, FFMPEG_OPEN_DECODER_FAIL);
+            avcodec_free_context(&codecContext);
+            avformat_close_input(&formatContext);
             return;
         }
 
@@ -105,7 +119,10 @@ void MediaPlayer::prepare_() {
         if (parameters->codec_type == AVMediaType::AVMEDIA_TYPE_AUDIO) {
             //音频
             audio_channel = new AudioChannel(i, codecContext, time_base);
-            LOGE("创建音频流通道：%d",i);
+            if (duration > 0) {
+                audio_channel->setJNICallback(callback);
+            }
+            LOGE("创建音频流通道：%d", i);
         } else if (parameters->codec_type == AVMediaType::AVMEDIA_TYPE_VIDEO) {
             //视频
 
@@ -119,12 +136,19 @@ void MediaPlayer::prepare_() {
 
             video_channel = new VideoChannel(i, codecContext, time_base, fps);
             video_channel->setRenderCallback(renderCallback);
-            LOGE("创建视频流通道：%d",i);
+            if (duration > 0) {
+                video_channel->setJNICallback(callback);
+            }
+            LOGE("创建视频流通道：%d", i);
         }
     }
 
     if (!audio_channel && !video_channel) {
         errorCallback(r, THREAD_CHILD, FFMPEG_NOMEDIA);
+        if (codecContext) {
+            avcodec_free_context(&codecContext);
+        }
+        avformat_close_input(&formatContext);
         return;
     }
 
@@ -171,7 +195,6 @@ void MediaPlayer::start_() {
             av_usleep(10 * 1000);
             continue;
         }
-        LOGE("将压缩包放入队列");
         //AVPacket 压缩包，可能是视频或音频
         AVPacket *packet = av_packet_alloc();
         int ret = av_read_frame(formatContext, packet);
@@ -197,5 +220,95 @@ void MediaPlayer::start_() {
     video_channel->stop();
     audio_channel->stop();
 }
+
+jint MediaPlayer::getDuration() {
+    return duration;
+}
+
+void MediaPlayer::seek(int progress) {
+    if (progress < 0 || progress > duration) {
+        return;
+    }
+    if (!audio_channel) {
+        return;
+    }
+    if (!video_channel) {
+        return;
+    }
+    if (!formatContext) {
+        return;
+    }
+
+    pthread_mutex_lock(&seek_mutex);
+
+    /**
+     * @param stream_index 代表默认情况，FFmpeg自动选择 音频 还是 视频
+     * @param flags AVSEEK_FLAG_ANY 直接精准到 拖动的位置，问题：如果不是关键帧，B帧 可能会造成 花屏情况
+     *              AVSEEK_FLAG_BACKWARD（则优  8的位置 B帧 ， 找附件的关键帧 6，如果找不到他也会花屏）
+     *              AVSEEK_FLAG_FRAME 找关键帧（非常不准确，可能会跳的太多），一般不会直接用，但是会配合用
+     */
+    LOGE("拖动播放：%d", progress);
+    int r = av_seek_frame(formatContext, -1, progress * AV_TIME_BASE, AVSEEK_FLAG_FRAME);
+    if (r < 0) {
+        pthread_mutex_unlock(&seek_mutex);
+        return;
+    }
+
+    if (audio_channel) {
+        audio_channel->packets.setWork(0);
+        audio_channel->packets.clear();
+        audio_channel->packets.setWork(1);
+
+        audio_channel->frames.setWork(0);
+        audio_channel->frames.clear();
+        audio_channel->frames.setWork(1);
+    }
+
+    if (video_channel) {
+        video_channel->packets.setWork(0);
+        video_channel->packets.clear();
+        video_channel->packets.setWork(1);
+
+        video_channel->frames.setWork(0);
+        video_channel->frames.clear();
+        video_channel->frames.setWork(1);
+    }
+
+    pthread_mutex_unlock(&seek_mutex);
+}
+
+void *task_stop(void *args) {
+    auto *player = static_cast<MediaPlayer *>(args);
+    player->stop_(player);
+    return nullptr;
+}
+
+void MediaPlayer::stop() {
+    callback = nullptr;
+    if (audio_channel) {
+        audio_channel->setJNICallback(nullptr);
+    }
+    if (video_channel) {
+        video_channel->setJNICallback(nullptr);
+    }
+    pthread_create(&pid_stop, nullptr, task_stop, this);
+}
+
+void MediaPlayer::stop_(MediaPlayer *pPlayer) {
+    isPlaying = false;
+    pthread_join(pid_prepare, nullptr);
+    pthread_join(pid_start, nullptr);
+
+    if (formatContext) {
+        avformat_close_input(&formatContext);
+        avformat_free_context(formatContext);
+    }
+
+    DELETE(audio_channel);
+    DELETE(video_channel);
+    DELETE(pPlayer);
+}
+
+
 
 //endregion

@@ -61,7 +61,41 @@ void AudioChannel::start() {
 }
 
 void AudioChannel::stop() {
+    isPlaying = false;
 
+    pthread_join(pid_audio_decode, nullptr);
+    pthread_join(pid_audio_play, nullptr);
+
+    packets.setWork(0);
+    frames.setWork(0);
+
+    // OpenSLES释放工作
+    if (bqPlayerPlay) {
+        (*bqPlayerPlay)->SetPlayState(bqPlayerPlay, SL_PLAYSTATE_STOPPED);
+        bqPlayerPlay = nullptr;
+    }
+
+    if (bqPlayerObject) {
+        (*bqPlayerObject)->Destroy(bqPlayerObject);
+        bqPlayerObject = nullptr;
+        bqPlayerBufferQueue = nullptr;
+    }
+
+    if (outputMixObject) {
+        (*outputMixObject)->Destroy(outputMixObject);
+        outputMixObject = nullptr;
+    }
+
+    if (engineObject) {
+        (*engineObject)->Destroy(engineObject);
+        engineObject = nullptr;
+        engineInterface = nullptr;
+
+        // 队列清空
+        packets.clear();
+        frames.clear();
+
+    }
 }
 
 void AudioChannel::audio_decode() {
@@ -94,7 +128,7 @@ void AudioChannel::audio_decode() {
             continue;
         } else if (ret != 0) {
             LOGE("原始包解码失败");
-            if (frame){
+            if (frame) {
                 releaseAVFrame(&frame);
             }
             break;
@@ -137,7 +171,6 @@ int AudioChannel::getPCM() {
 
     // 获取PCM数据
     // PCM数据在哪里？答：队列 frames队列中  frame->data == PCM数据(待 重采样   32bit)
-
     AVFrame *frame = nullptr;
     while (isPlaying) {
         int ret = frames.getQueueAndDel(frame);
@@ -152,32 +185,37 @@ int AudioChannel::getPCM() {
 
         // 来源：10个48000   ---->  目标:44100  11个44100
         // 获取单通道的样本数 (计算目标样本数： ？ 10个48000 --->  48000/44100因为除不尽  11个44100)
-        int dst_nb_samples = av_rescale_rnd(swr_get_delay(swr_ctx, frame->sample_rate) + frame->nb_samples, // 获取下一个输入样本相对于下一个输出样本将经历的延迟
-                                            out_sample_rate, // 输出采样率
-                                            frame->sample_rate, // 输入采样率
-                                            AV_ROUND_UP); // 先上取 取去11个才能容纳的上
+        int dst_nb_samples = av_rescale_rnd(
+                swr_get_delay(swr_ctx, frame->sample_rate) +
+                frame->nb_samples, // 获取下一个输入样本相对于下一个输出样本将经历的延迟
+                out_sample_rate, // 输出采样率
+                frame->sample_rate, // 输入采样率
+                AV_ROUND_UP); // 先上取 取去11个才能容纳的上
 
         // pcm的处理逻辑
         // 音频播放器的数据格式是我们自己在下面定义的
         // 而原始数据（待播放的音频pcm数据）
-        // TODO 重采样工作
         // 返回的结果：每个通道输出的样本数(注意：是转换后的)    做一个简单的重采样实验(通道基本上都是:1024)
-        int samples_per_channel = swr_convert(swr_ctx,
+        int samples_per_channel = swr_convert(
+                swr_ctx,
                 // 下面是输出区域
-                                              &out_buffers,  // 【成果的buff】  重采样后的
-                                              dst_nb_samples, // 【成果的 单通道的样本数 无法与out_buffers对应，所以有下面的pcm_data_size计算】
+                &out_buffers,  // 【成果的buff】  重采样后的
+                dst_nb_samples, // 【成果的 单通道的样本数 无法与out_buffers对应，所以有下面的pcm_data_size计算】
 
                 // 下面是输入区域
-                                              (const uint8_t **) frame->data, // 队列的AVFrame * 那的  PCM数据 未重采样的
-                                              frame->nb_samples); // 输入的样本数
+                (const uint8_t **) frame->data, // 队列的AVFrame * 那的  PCM数据 未重采样的
+                frame->nb_samples); // 输入的样本数
 
         // 由于out_buffers 和 dst_nb_samples 无法对应，所以需要重新计算
-        pcm_data_size = samples_per_channel * out_sample_size * out_channels; // 941通道样本数  *  2样本格式字节数  *  2声道数  =3764
+        pcm_data_size = samples_per_channel * out_sample_size *
+                        out_channels; // 941通道样本数  *  2样本格式字节数  *  2声道数  =3764
 
         // 时间基TimeBase理解：例如：（fps25 一秒钟25帧， 那么每一帧==25分之1，而25分之1就是时间基概念）
 
         audio_time = frame->best_effort_timestamp * av_q2d(time_base); // 必须这样计算后，才能拿到真正的时间搓
-        LOGE("音频时间戳：%f",audio_time);
+        if (callback) {
+            callback->onProgress(THREAD_CHILD, audio_time);
+        }
 
         break; // 利用while循环 来写我们的逻辑
 

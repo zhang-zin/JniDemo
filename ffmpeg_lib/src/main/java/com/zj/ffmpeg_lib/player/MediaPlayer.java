@@ -31,6 +31,7 @@ public class MediaPlayer implements LifecycleObserver, SurfaceHolder.Callback {
     private String path;
     private OnPreparedListener mOnPreparedListener;
     private OnErrorListener mOnErrorListener;
+    private OnProgressListener mOnProgressListener;
     private SurfaceHolder surfaceHolder;
 
     public void setOnPreparedListener(OnPreparedListener onPreparedListener) {
@@ -39,6 +40,10 @@ public class MediaPlayer implements LifecycleObserver, SurfaceHolder.Callback {
 
     public void setOnErrorListener(OnErrorListener onErrorListener) {
         this.mOnErrorListener = onErrorListener;
+    }
+
+    public void setOnProgressListener(OnProgressListener onProgressListener) {
+        this.mOnProgressListener = onProgressListener;
     }
 
     public void setSurfaceHolder(SurfaceView surfaceView) {
@@ -58,12 +63,20 @@ public class MediaPlayer implements LifecycleObserver, SurfaceHolder.Callback {
         nativePrepare(path);
     }
 
+    public int getDuration() {
+        return getDurationNative();
+    }
+
     public void start() {
         nativeStart();
     }
 
     public void stop() {
         nativeStop();
+    }
+
+    public void seek(int progress) {
+        nativeSeek(progress);
     }
 
     @OnLifecycleEvent(Lifecycle.Event.ON_DESTROY)
@@ -114,13 +127,18 @@ public class MediaPlayer implements LifecycleObserver, SurfaceHolder.Callback {
         }
     }
 
+    public void onProgress(int progress) {
+        if (mOnProgressListener != null)
+            mOnProgressListener.onProgress(progress);
+    }
+
     @Override
     public void surfaceCreated(@NonNull SurfaceHolder holder) {
     }
 
     @Override
     public void surfaceChanged(@NonNull SurfaceHolder holder, int format, int width, int height) {
-        Log.e("JNI","surfaceChanged");
+        Log.e("JNI", "surfaceChanged");
         setSurfaceNative(holder.getSurface());
     }
 
@@ -136,6 +154,10 @@ public class MediaPlayer implements LifecycleObserver, SurfaceHolder.Callback {
         void onError(int code, String errorMsg);
     }
 
+    public interface OnProgressListener {
+        void onProgress(int progress);
+    }
+
     //region native方法
 
     private native void nativePrepare(String path);
@@ -147,6 +169,10 @@ public class MediaPlayer implements LifecycleObserver, SurfaceHolder.Callback {
     private native void nativeRelease();
 
     private native void setSurfaceNative(Surface surface);
+
+    private native int getDurationNative();
+
+    private native void nativeSeek(int progress);
     //endregion
 
 }

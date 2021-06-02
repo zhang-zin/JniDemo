@@ -13,6 +13,7 @@ private:
     jobject job;
     jmethodID methodPrepareId;
     jmethodID methodErrorId;
+    jmethodID methodProgress;
 
 public:
 
@@ -22,7 +23,10 @@ public:
 
     void onPrepared(int thread_mode);
 
-    void onError(int thread_mode,int code,char * errorMsg);
+    void onError(int thread_mode, int code, char *errorMsg);
+
+    void onProgress(int thread_mode, int time);
+
 };
 
 

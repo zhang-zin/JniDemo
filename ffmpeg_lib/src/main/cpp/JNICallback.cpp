@@ -7,6 +7,7 @@ JNICallback::JNICallback(JavaVM *vm, JNIEnv *env, jobject job) {
     jclass pJclass = env->GetObjectClass(job);
     methodPrepareId = env->GetMethodID(pJclass, "onPrepare", "()V");
     methodErrorId = env->GetMethodID(pJclass, "onError", "(ILjava/lang/String;)V");
+    methodProgress = env->GetMethodID(pJclass, "onProgress", "(I)V");
 }
 
 JNICallback::~JNICallback() {
@@ -40,6 +41,17 @@ void JNICallback::onError(int thread_mode, int code, char *errorMsg) {
         vm->AttachCurrentThread(&jniEnv, nullptr);
         jstring msg = jniEnv->NewStringUTF(errorMsg);
         jniEnv->CallVoidMethod(job, methodErrorId, code, msg);
+        vm->DetachCurrentThread();
+    }
+}
+
+void JNICallback::onProgress(int thread_mode, int time) {
+    if (thread_mode == THREAD_MAIN) {
+        env->CallVoidMethod(job, methodProgress, time);
+    } else{
+        JNIEnv *jniEnv;
+        vm->AttachCurrentThread(&jniEnv, nullptr);
+        jniEnv->CallVoidMethod(job, methodProgress, time);
         vm->DetachCurrentThread();
     }
 }
