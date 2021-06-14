@@ -42,10 +42,11 @@ public class MainActivity extends AppCompatActivity implements SeekBar.OnSeekBar
         requestPermissions(new String[]{Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE}, 0);
         getLifecycle().addObserver(player);
         String path = new File(Environment.getExternalStorageDirectory() + File.separator + "demo.mp4").getAbsolutePath();
-        player.setDataSource(path);
+        player.setDataSource("rtmp://58.200.131.2:1935/livetv/hunantv");
         player.setSurfaceHolder(surfaceView);
         player.prepare();
         player.setOnPreparedListener(() -> {
+            Log.e(TAG, "OnPrepared ");
             duration = player.getDuration();
             if (duration > 0) {
                 tvTime.setVisibility(View.VISIBLE);
@@ -64,6 +65,13 @@ public class MainActivity extends AppCompatActivity implements SeekBar.OnSeekBar
                     int curProgress = (int) (progress * 1.0f / duration * 100);
                     seekBar.setProgress(curProgress);
                 });
+            }
+        });
+
+        player.setOnErrorListener(new MediaPlayer.OnErrorListener() {
+            @Override
+            public void onError(int code, String errorMsg) {
+                Log.e(TAG, "errorMsg: " + errorMsg);
             }
         });
 
