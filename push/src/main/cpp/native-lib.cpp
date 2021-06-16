@@ -2,7 +2,7 @@
 #include <string>
 
 #include <rtmp.h> // 查找系统的环境变量 <// >
-#include <x 264.h>
+//#include <x264.h>
 
 extern "C"
 JNIEXPORT jstring JNICALL

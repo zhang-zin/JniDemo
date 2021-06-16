@@ -1,4 +1,4 @@
-package com.zj.ffmpeg_lib.player;
+package com.zj.push;
 
 import android.app.Activity;
 import android.graphics.ImageFormat;
