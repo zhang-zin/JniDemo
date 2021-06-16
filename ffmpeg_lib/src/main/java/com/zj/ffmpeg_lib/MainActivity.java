@@ -42,19 +42,22 @@ public class MainActivity extends AppCompatActivity implements SeekBar.OnSeekBar
         requestPermissions(new String[]{Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE}, 0);
         getLifecycle().addObserver(player);
         String path = new File(Environment.getExternalStorageDirectory() + File.separator + "demo.mp4").getAbsolutePath();
+//        player.setDataSource(path);
         player.setDataSource("rtmp://58.200.131.2:1935/livetv/hunantv");
+
         player.setSurfaceHolder(surfaceView);
         player.prepare();
         player.setOnPreparedListener(() -> {
             Log.e(TAG, "OnPrepared ");
             duration = player.getDuration();
-            if (duration > 0) {
-                tvTime.setVisibility(View.VISIBLE);
-                seekBar.setVisibility(View.VISIBLE);
-                tvTime.setText(String.format("00:00/%s:%s", getMinutes(duration), getSeconds(duration)));
-
-            }
-            runOnUiThread(() -> Toast.makeText(MainActivity.this, "准备成功", Toast.LENGTH_SHORT).show());
+            runOnUiThread(() -> {
+                if (duration > 0) {
+                    tvTime.setVisibility(View.VISIBLE);
+                    seekBar.setVisibility(View.VISIBLE);
+                    tvTime.setText(String.format("00:00/%s:%s", getMinutes(duration), getSeconds(duration)));
+                }
+                Toast.makeText(MainActivity.this, "准备成功", Toast.LENGTH_SHORT).show();
+            });
             player.start();
         });
 
@@ -68,12 +71,7 @@ public class MainActivity extends AppCompatActivity implements SeekBar.OnSeekBar
             }
         });
 
-        player.setOnErrorListener(new MediaPlayer.OnErrorListener() {
-            @Override
-            public void onError(int code, String errorMsg) {
-                Log.e(TAG, "errorMsg: " + errorMsg);
-            }
-        });
+        player.setOnErrorListener((code, errorMsg) -> Log.e(TAG, "errorMsg: " + errorMsg));
 
         seekBar.setOnSeekBarChangeListener(this);
     }

@@ -10,8 +10,14 @@ MediaPlayer::MediaPlayer(const char *path, JNICallback *pCallback) {
 
 MediaPlayer::~MediaPlayer() {
     LOGE("~MediaPlayer");
-    delete data_source;
-    delete callback;
+    if (data_source) {
+        delete data_source;
+        data_source = nullptr;
+    }
+    if (callback) {
+        delete callback;
+        callback = nullptr;
+    }
 
     pthread_mutex_destroy(&seek_mutex);
 }
