@@ -11,6 +11,7 @@ add_library(
         native-lib
         SHARED
         native-lib.cpp
+        VideoChannel.cpp
 )
 
 target_link_libraries(

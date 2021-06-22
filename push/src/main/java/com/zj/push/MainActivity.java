@@ -14,29 +14,27 @@ public class MainActivity extends AppCompatActivity {
         System.loadLibrary("native-lib");
     }
 
-    CameraHelper cameraHelper;
+    private Pusher pusher;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
-        String jni = stringFromJNI();
-        Log.e("zhang", jni);
 
         SurfaceView surfaceView = findViewById(R.id.surfaceView);
-        cameraHelper = new CameraHelper(this, Camera.CameraInfo.CAMERA_FACING_BACK, 640, 480);
-        cameraHelper.setPreviewDisplay(surfaceView.getHolder());
-    }
-
-    public native String stringFromJNI();
-
-    public void stopLive(View view) {
-    }
-
-    public void startLive(View view) {
+        pusher = new Pusher(this, Camera.CameraInfo.CAMERA_FACING_BACK, 640, 480, 25, 800_000);
+        pusher.setPreviewDisplay(surfaceView.getHolder());
     }
 
     public void switchCamera(View view) {
-        cameraHelper.switchCamera();
+        pusher.switchCamera();
     }
+
+    public void startLive(View view) {
+        pusher.startLive("rtmp://115.159.144.229/zhang");
+    }
+
+    public void stopLive(View view) {
+        pusher.stopLive();
+    }
+
 }

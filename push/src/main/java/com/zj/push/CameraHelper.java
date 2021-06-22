@@ -25,6 +25,7 @@ public class CameraHelper implements SurfaceHolder.Callback, Camera.PreviewCallb
     private byte[] buffer;
     private SurfaceHolder surfaceHolder;
     private Camera.PreviewCallback previewCallback;
+    private OnChangedSizeListener onChangedSizeListener;
 
     public CameraHelper(Activity activity, int cameraId, int width, int height) {
         this.activity = activity;
@@ -101,12 +102,15 @@ public class CameraHelper implements SurfaceHolder.Callback, Camera.PreviewCallb
             camera.setPreviewDisplay(surfaceHolder);
             //开启预览
             camera.startPreview();
+            if (onChangedSizeListener != null) {
+                onChangedSizeListener.onChanged(width, height);
+            }
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
-    private void stopPreview() {
+    public void stopPreview() {
         if (camera != null) {
             camera.setPreviewCallback(null);
             camera.stopPreview();
@@ -158,15 +162,32 @@ public class CameraHelper implements SurfaceHolder.Callback, Camera.PreviewCallb
             case Surface.ROTATION_270:
                 degrees = 270;
                 break;
+            default:
+                break;
         }
         int result;
         if (info.facing == Camera.CameraInfo.CAMERA_FACING_FRONT) {
             result = (info.orientation + degrees) % 360;
-            result = (360 - result) % 360; // compensate the mirror
+            // compensate the mirror
+            result = (360 - result) % 360;
         } else {
             // back-facing
             result = (info.orientation - degrees + 360) % 360;
         }
         camera.setDisplayOrientation(result);
+    }
+
+    public void setOnChangedSizeListener(OnChangedSizeListener listener) {
+        this.onChangedSizeListener = listener;
+    }
+
+    public interface OnChangedSizeListener {
+        /**
+         * 摄像头采集的宽高发生变化
+         *
+         * @param width  当前的宽
+         * @param height 当前的高
+         */
+        void onChanged(int width, int height);
     }
 }
