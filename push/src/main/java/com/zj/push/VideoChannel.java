@@ -2,6 +2,7 @@ package com.zj.push;
 
 import android.app.Activity;
 import android.hardware.Camera;
+import android.util.Log;
 import android.view.SurfaceHolder;
 
 import androidx.fragment.app.FragmentActivity;
@@ -32,7 +33,8 @@ public class VideoChannel implements Camera.PreviewCallback, CameraHelper.OnChan
     public void onPreviewFrame(byte[] data, Camera camera) {
         if (isLive) {
             // 图像数据推送
-            pusher.native_pushVideo();
+            Log.e("JNI", "推送摄像头数据");
+            pusher.native_pushVideo(data);
         }
     }
 

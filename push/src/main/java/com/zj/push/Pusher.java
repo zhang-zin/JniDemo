@@ -58,9 +58,9 @@ public class Pusher implements LifecycleObserver {
 
     public native void native_release();
 
-    public native void native_pushVideo();
-
     public native void native_initVideoEncoder(int width, int height, int fps, int bitrate);
+
+    public native void native_pushVideo(byte[] data);
     //endregion
 
 }
