@@ -6,6 +6,7 @@
 #include "VideoChannel.h"
 #include "util.h"
 #include "safe_queue.h"
+#include "AudioChannel.h"
 
 typedef char *string;
 
@@ -23,6 +24,7 @@ uint32_t start_time; // 记录时间戳
 SafeQueue<RTMPPacket *> packets;
 
 VideoChannel *videoChannel = nullptr;
+AudioChannel *audioChannel = nullptr;
 pthread_t pid_start;
 RTMP *rtmp = nullptr;
 
@@ -36,7 +38,7 @@ void releasePackets(RTMPPacket **pRtmpPacket) {
     }
 }
 
-void videoCallback(RTMPPacket *rtmpPacket) {
+void dataCallback(RTMPPacket *rtmpPacket) {
     if (rtmpPacket) {
         if (rtmpPacket->m_nTimeStamp == -1) {
             rtmpPacket->m_nTimeStamp = RTMP_GetTime() - start_time; // 如果是sps+pps 没有时间搓，如果是I帧就需要有时间搓
@@ -98,6 +100,8 @@ void *task_start(void *args) {
         readyPushing = true; // 准备好了，可以向服务器开始推流
         packets.setWork(1); //队列开始工作
 
+        dataCallback(audioChannel->getAudioSeqHeader());
+
         RTMPPacket *packet = nullptr;
         LOGE("rtmp readyPushing：%d", readyPushing);
         while (readyPushing) {
@@ -128,6 +132,7 @@ void *task_start(void *args) {
     packets.clear();
 
     if (rtmp) {
+        LOGE("停止直播关闭rtmp");
         RTMP_Close(rtmp);
         RTMP_Free(rtmp);
     }
@@ -139,7 +144,11 @@ extern "C"
 JNIEXPORT void JNICALL
 Java_com_zj_push_Pusher_native_1init(JNIEnv *env, jobject thiz) {
     videoChannel = new VideoChannel();
-    videoChannel->setVideoCallback(videoCallback);
+    videoChannel->setVideoCallback(dataCallback);
+
+    audioChannel = new AudioChannel();
+    audioChannel->setAudioCallback(dataCallback);
+
     packets.setReleaseCallback(releasePackets);
     LOGE("native_init");
 }
@@ -171,12 +180,14 @@ Java_com_zj_push_Pusher_native_1stop(JNIEnv *env, jobject thiz) {
     readyPushing = false;
     packets.setWork(0);
     pthread_join(pid_start, nullptr);
+    LOGE("停止直播");
 }
 
 extern "C"
 JNIEXPORT void JNICALL
 Java_com_zj_push_Pusher_native_1release(JNIEnv *env, jobject thiz) {
-    // TODO: implement native_release()
+    DELETE(videoChannel)
+    DELETE(audioChannel)
 }
 
 extern "C"
@@ -198,4 +209,34 @@ Java_com_zj_push_Pusher_native_1pushVideo(JNIEnv *env, jobject thiz, jbyteArray 
     jbyte *data = env->GetByteArrayElements(data_, nullptr);
     videoChannel->encodeData(data);
     env->ReleaseByteArrayElements(data_, data, 0);
+}
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_zj_push_Pusher_native_1initAudioEncoder(JNIEnv *env, jobject thiz, jint sample_rate,
+                                                 jint channels) {
+    if (audioChannel) {
+        audioChannel->initAudioEncoder(sample_rate, channels);
+    }
+
+}
+
+extern "C"
+JNIEXPORT jint JNICALL
+Java_com_zj_push_Pusher_getInputSamples(JNIEnv *env, jobject thiz) {
+    if (audioChannel) {
+        return audioChannel->getInputSamples();
+    }
+    return 0;
+}
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_zj_push_Pusher_native_1pushAudio(JNIEnv *env, jobject thiz, jbyteArray bytes) {
+    if (!audioChannel || !readyPushing) {
+        return;
+    }
+    jbyte *data = env->GetByteArrayElements(bytes, nullptr);
+    audioChannel->encodeData(data);
+    env->ReleaseByteArrayElements(bytes, data, 0);
 }

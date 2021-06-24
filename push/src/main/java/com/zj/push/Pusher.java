@@ -15,15 +15,15 @@ import androidx.lifecycle.OnLifecycleEvent;
  */
 public class Pusher implements LifecycleObserver {
 
-    private VideoChannel videoChannel;
+    private final VideoChannel videoChannel;
     private AudioChannel audioChannel;
 
     public Pusher(FragmentActivity activity, int cameraId, int width, int height, int fps, int bitrate) {
         activity.getLifecycle().addObserver(this);
         native_init();
         videoChannel = new VideoChannel(this, activity, cameraId, width, height, fps, bitrate);
+        audioChannel = new AudioChannel(this);
     }
-
 
     public void setPreviewDisplay(SurfaceHolder holder) {
         videoChannel.setPreviewDisplay(holder);
@@ -35,18 +35,21 @@ public class Pusher implements LifecycleObserver {
 
     public void startLive(String path) {
         Log.e("JNI", "开启直播");
-        native_start(path);
         videoChannel.startLive();
+        audioChannel.startLive();
+        native_start(path);
     }
 
     public void stopLive() {
-        native_stop();
         videoChannel.stopLive();
+        audioChannel.stopLive();
+        native_stop();
     }
 
     @OnLifecycleEvent(Lifecycle.Event.ON_DESTROY)
     public void release() {
         videoChannel.release();
+        audioChannel.release();
         native_release();
     }
 
@@ -63,6 +66,12 @@ public class Pusher implements LifecycleObserver {
     public native void native_initVideoEncoder(int width, int height, int fps, int bitrate);
 
     public native void native_pushVideo(byte[] data);
+
+    public native void native_initAudioEncoder(int sampleRate, int channels);
+
+    public native int getInputSamples();
+
+    public native void native_pushAudio(byte[] bytes);
     //endregion
 
 }
