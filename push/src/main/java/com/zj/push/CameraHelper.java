@@ -97,7 +97,7 @@ public class CameraHelper implements SurfaceHolder.Callback, Camera.PreviewCallb
             //数据缓存区
             buffer = new byte[width * height * 3 / 2];
             camera.addCallbackBuffer(buffer);
-
+            camera.setPreviewCallbackWithBuffer(this);
             //设置预览画面
             camera.setPreviewDisplay(surfaceHolder);
             //开启预览

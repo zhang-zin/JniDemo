@@ -1,5 +1,6 @@
 package com.zj.push;
 
+import android.util.Log;
 import android.view.SurfaceHolder;
 
 import androidx.fragment.app.FragmentActivity;
@@ -33,6 +34,7 @@ public class Pusher implements LifecycleObserver {
     }
 
     public void startLive(String path) {
+        Log.e("JNI", "开启直播");
         native_start(path);
         videoChannel.startLive();
     }
@@ -44,8 +46,8 @@ public class Pusher implements LifecycleObserver {
 
     @OnLifecycleEvent(Lifecycle.Event.ON_DESTROY)
     public void release() {
-        native_release();
         videoChannel.release();
+        native_release();
     }
 
     //region native 方法

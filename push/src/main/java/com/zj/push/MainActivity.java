@@ -2,6 +2,7 @@ package com.zj.push;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import android.Manifest;
 import android.hardware.Camera;
 import android.os.Bundle;
 import android.util.Log;
@@ -21,7 +22,7 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         SurfaceView surfaceView = findViewById(R.id.surfaceView);
-        requestPermissions(new String[]{"android.permission.CAMERA"}, 0);
+        requestPermissions(new String[]{Manifest.permission.CAMERA, Manifest.permission.RECORD_AUDIO}, 0);
         pusher = new Pusher(this, Camera.CameraInfo.CAMERA_FACING_BACK, 640, 480, 25, 800_000);
         pusher.setPreviewDisplay(surfaceView.getHolder());
     }

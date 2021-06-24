@@ -257,7 +257,6 @@ void VideoChannel::sendFrame(int type, int payload, uint8_t *pPayload) {
     packet->m_nTimeStamp = -1; // 帧数据有时间戳
     packet->m_hasAbsTimestamp = 0; // 时间戳绝对或相对 用不到，不需要
     packet->m_headerType = RTMP_PACKET_SIZE_LARGE; // 包的类型：若是关键帧的话，数据量比较大，所以设置大包
-    LOGE("发送帧信息");
     videoCallback(packet);
 }
 

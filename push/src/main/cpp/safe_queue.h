@@ -120,8 +120,6 @@ public:
 
         pthread_mutex_unlock(&mutex); // 多线程的访问（要解锁）
     }
-
 };
-
 
 #endif //JNIDEMO_SAFE_QUEUE_H

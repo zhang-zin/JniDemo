@@ -24,6 +24,7 @@ SafeQueue<RTMPPacket *> packets;
 
 VideoChannel *videoChannel = nullptr;
 pthread_t pid_start;
+RTMP *rtmp = nullptr;
 
 /**
  * 释放工作
@@ -32,7 +33,6 @@ pthread_t pid_start;
 void releasePackets(RTMPPacket **pRtmpPacket) {
     if (pRtmpPacket) {
         RTMPPacket_Free(*pRtmpPacket);
-        delete pRtmpPacket;
     }
 }
 
@@ -46,42 +46,48 @@ void videoCallback(RTMPPacket *rtmpPacket) {
 }
 
 /**
+ * 初始化rtmp和流服务器建立连接
+ */
+bool rtmpConnect(char *url) {
+    // 1. rtmp初始化
+    rtmp = RTMP_Alloc();
+    int ret; // 返回值判断是否成功
+    if (!rtmp) {
+        LOGE("rtmp 初始化失败");
+        return false;
+    }
+    // 2. rtmp设置流媒体地址
+    RTMP_Init(rtmp);
+    rtmp->Link.timeout = 5; // 设置连接的超时时间 5s
+    ret = RTMP_SetupURL(rtmp, url);
+    if (!ret) {
+        LOGE("rtmp 设置流媒体地址失败");
+        return false;
+    }
+
+    // 3. 开启输出模式
+    RTMP_EnableWrite(rtmp);
+
+    // 4. 建立连接
+    ret = RTMP_Connect(rtmp, nullptr);
+    if (!ret) {
+        LOGE("rtmp 建立连接失败:%d, url: %s", ret, url);
+        return false;
+    }
+    return true;
+}
+
+/**
  * 子线程连接推流服务器并开始推流
  * @param args 推流的地址
  * @return
  */
 void *task_start(void *args) {
     char *url = static_cast<char *>(args);
-    LOGE(" task_start %s", url);
+    LOGE("task_start %s", url);
 
-    RTMP *rtmp = nullptr;
     int ret; // 返回值判断是否成功
     do {
-        // 1. rtmp初始化
-        rtmp = RTMP_Alloc();
-        if (!rtmp) {
-            LOGE("rtmp 初始化失败");
-            break;
-        }
-        // 2. rtmp设置流媒体地址
-        RTMP_Init(rtmp);
-        rtmp->Link.timeout = 5; // 设置连接的超时时间 5s
-        ret = RTMP_SetupURL(rtmp, url);
-        if (!ret) {
-            LOGE("rtmp 设置流媒体地址失败");
-            break;
-        }
-
-        // 3. 开启输出模式
-        RTMP_EnableWrite(rtmp);
-
-        // 4. 建立连接
-        ret = RTMP_Connect(rtmp, nullptr);
-        if (!ret) {
-            LOGE("rtmp 建立连接失败:%d, url: %s", ret, url);
-            break;
-        }
-
         // 5. 连接流
         ret = RTMP_ConnectStream(rtmp, 0);
         if (!ret) {
@@ -104,7 +110,6 @@ void *task_start(void *args) {
             }
 
             // 给rtmp的流id
-            LOGE("rtmp 开始推流");
             packet->m_nInfoField2 = rtmp->m_stream_id;
             ret = RTMP_SendPacket(rtmp, packet, 1); // queue = 1，开启内部缓冲
             releasePackets(&packet);
@@ -149,15 +154,23 @@ Java_com_zj_push_Pusher_native_1start(JNIEnv *env, jobject thiz, jstring path_) 
     const char *path = env->GetStringUTFChars(path_, nullptr);
     char *url = new char(strlen(path) + 1);
     strcpy(url, path); // 设拷贝推流地址
-    pthread_create(&pid_start, nullptr, task_start, url); // 开启子线程推流
+
+    bool connect = rtmpConnect(url);
+
+    if (connect) {
+        LOGE("连接流服务器");
+        pthread_create(&pid_start, nullptr, task_start, url); // 开启子线程推流
+    }
     env->ReleaseStringUTFChars(path_, path);
-    LOGE("native_start");
 }
 
 extern "C"
 JNIEXPORT void JNICALL
 Java_com_zj_push_Pusher_native_1stop(JNIEnv *env, jobject thiz) {
-    // TODO: implement native_stop()
+    isStart = false;
+    readyPushing = false;
+    packets.setWork(0);
+    pthread_join(pid_start, nullptr);
 }
 
 extern "C"
@@ -178,11 +191,9 @@ Java_com_zj_push_Pusher_native_1initVideoEncoder(JNIEnv *env, jobject thiz, jint
 extern "C"
 JNIEXPORT void JNICALL
 Java_com_zj_push_Pusher_native_1pushVideo(JNIEnv *env, jobject thiz, jbyteArray data_) {
-    LOGE("native_pushVideo");
     if (!videoChannel || !readyPushing) {
         return;
     }
-    LOGE("native_pushVideo start");
     // JNI字节数组 -> C的字节数组
     jbyte *data = env->GetByteArrayElements(data_, nullptr);
     videoChannel->encodeData(data);

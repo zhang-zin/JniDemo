@@ -33,7 +33,6 @@ public class VideoChannel implements Camera.PreviewCallback, CameraHelper.OnChan
     public void onPreviewFrame(byte[] data, Camera camera) {
         if (isLive) {
             // 图像数据推送
-            Log.e("JNI", "推送摄像头数据");
             pusher.native_pushVideo(data);
         }
     }
