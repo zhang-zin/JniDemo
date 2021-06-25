@@ -21,7 +21,7 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         SurfaceView surfaceView = findViewById(R.id.surfaceView);
-        requestPermissions(new String[]{Manifest.permission.CAMERA, Manifest.permission.RECORD_AUDIO}, 0);
+        requestPermissions(new String[]{Manifest.permission.CAMERA, Manifest.permission.RECORD_AUDIO, Manifest.permission.WRITE_EXTERNAL_STORAGE}, 0);
         pusher = new Pusher(this, Camera.CameraInfo.CAMERA_FACING_BACK, 640, 480, 25, 800_000);
         pusher.setPreviewDisplay(surfaceView.getHolder());
     }
