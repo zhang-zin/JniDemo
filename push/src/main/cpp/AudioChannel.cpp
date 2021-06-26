@@ -41,7 +41,7 @@ void AudioChannel::initAudioEncoder(int sample_rate, int channels) {
         LOGE("初始化编码器失败");
         return;
     }
-    LOGE("初始化编码器成功");
+    LOGE("faac 初始化编码器成功");
     buffer = new u_char(maxOutputBytes);
 }
 

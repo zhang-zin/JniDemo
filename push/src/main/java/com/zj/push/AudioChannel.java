@@ -14,11 +14,13 @@ import java.io.IOException;
 public class AudioChannel {
 
     private final Pusher pusher;
+    private final PcmToWavUtil pcmToWavUtil;
     private AudioRecord audioRecord;
     private boolean isLive;
     private int channels = 2;
     private final int inputSamples;
     FileOutputStream outputStream = null;
+    private String absolutePath;
 
     public AudioChannel(Pusher pusher) {
         this.pusher = pusher;
@@ -42,6 +44,8 @@ public class AudioChannel {
                 44100, channelConfig,
                 AudioFormat.ENCODING_PCM_16BIT,
                 Math.max(inputSamples, minBufferSize));
+
+        pcmToWavUtil = new PcmToWavUtil(44100, channelConfig, AudioFormat.ENCODING_PCM_16BIT);
     }
 
 
@@ -49,6 +53,7 @@ public class AudioChannel {
         isLive = true;
         try {
             File file = new File(Environment.getExternalStorageDirectory().getPath(), "zhang" + System.currentTimeMillis());
+            absolutePath = file.getAbsolutePath();
             outputStream = new FileOutputStream(file);
         } catch (FileNotFoundException e) {
             e.printStackTrace();
@@ -58,6 +63,8 @@ public class AudioChannel {
 
     public void stopLive() {
         isLive = false;
+        File file = new File(Environment.getExternalStorageDirectory().getPath(), "zhang" + System.currentTimeMillis() + ".wav");
+        pcmToWavUtil.pcmToWav(absolutePath, file.getAbsolutePath());
     }
 
     public void release() {
