@@ -44,7 +44,6 @@ class MainActivity : AppCompatActivity() {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode == 100 && data != null) {
             getResult(data.data)
-
         }
     }
 
@@ -123,7 +122,6 @@ class MainActivity : AppCompatActivity() {
                 idCard.setImageBitmap(fullImage)
             }
         }
-
     }
 
     private fun toBitmap(imagePath: String): Bitmap {
@@ -132,14 +130,14 @@ class MainActivity : AppCompatActivity() {
         BitmapFactory.decodeFile(imagePath, options)
         var widthTemp: Int = options.outWidth
         var heightTemp: Int = options.outHeight
-        var scale = 1;
+        var scale = 1
         while (true) {
             if (widthTemp <= 640 && heightTemp <= 480) {
-                break;
+                break
             }
-            widthTemp /= 2;
-            heightTemp /= 2;
-            scale *= 2;
+            widthTemp /= 2
+            heightTemp /= 2
+            scale *= 2
         }
         val opts: BitmapFactory.Options = BitmapFactory.Options()
         opts.inSampleSize = scale

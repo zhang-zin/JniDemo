@@ -6,7 +6,6 @@
 #include <opencv2/imgproc/types_c.h>
 #include "util.h"
 
-
 #define DEFAULT_CARD_WIDTH 640
 #define DEFAULT_CARD_HEIGHT 400
 #define FIX_ID_CARD_SIZE Size(DEFAULT_CARD_WIDTH,DEFAULT_CARD_HEIGHT)
@@ -14,7 +13,6 @@
 
 using namespace cv;
 using namespace std;
-
 
 extern "C" JNIEXPORT void JNICALL Java_org_opencv_android_Utils_nBitmapToMat2
         (JNIEnv *env, jclass, jobject bitmap, jlong m_addr, jboolean needUnPremultiplyAlpha);
@@ -46,7 +44,7 @@ Java_com_zj_opencv_ImageProcess_getIdNumber(JNIEnv *env, jobject thiz, jobject s
     Java_org_opencv_android_Utils_nBitmapToMat2(env, type, src, (jlong) &src_img, 0);
 
     Mat dst;
-    //无损压缩
+    //无损压缩 640x400
     resize(src_img, src_img, FIX_ID_CARD_SIZE);
     //灰度化
     cvtColor(src_img, dst, COLOR_BGR2GRAY);
