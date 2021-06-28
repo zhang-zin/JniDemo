@@ -20,6 +20,7 @@ android {
             cmake {
                 cppFlags "" // 默认包含四大平台 , 'arm64-v8a'
                 abiFilters 'armeabi-v7a'
+                arguments '-DANDROID_STL=c++_shared'
             }
         }
 
@@ -47,6 +48,11 @@ android {
     kotlinOptions {
         jvmTarget = '1.8'
     }
+    sourceSets {
+        main {
+            jniLibs.srcDirs = ['src/main/jinLibs']
+        }
+    }
 }
 
 dependencies {
@@ -59,4 +65,8 @@ dependencies {
     testImplementation 'junit:junit:4.+'
     androidTestImplementation 'androidx.test.ext:junit:1.1.2'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.3.0'
+
+    androidTestImplementation 'com.android.support.test:runner:1.0.2'
+    androidTestImplementation 'com.android.support.test.espresso:espresso-core:3.0.2'
+    implementation 'com.rmtheis:tess-two:7.0.0'
 }
