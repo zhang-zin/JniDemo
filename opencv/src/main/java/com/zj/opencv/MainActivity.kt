@@ -62,9 +62,12 @@ class MainActivity : AppCompatActivity() {
                 val open = assets.open("cn.traineddata")
                 val parentPath = getExternalFilesDir("")?.absolutePath
                         ?: Environment.getExternalStorageDirectory().absolutePath
-                val file = File("$parentPath/tess/tessdata", "cn.traineddata")
+                val parent = File("$parentPath/tess/tessdata")
+                if (!parent.exists()){
+                    parent.mkdirs()
+                }
+                val file = File(parent, "cn.traineddata")
                 if (!file.exists()) {
-                    file.createNewFile()
                     var fos: FileOutputStream? = null
                     try {
                         fos = FileOutputStream(file)
