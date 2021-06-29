@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    tools:context=".AudioTestActivity">
+
+    <Button
+        android:id="@+id/bt_record"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="10dp"
+        android:layout_marginEnd="10dp"
+        android:text="按住开始录音" />
+
+    <Button
+        android:id="@+id/bt_start_play_wav"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="10dp"
+        android:layout_marginEnd="10dp"
+        android:onClick="startPlayWAV"
+        android:text="点击播放WAV音频" />
+
+    <Button
+        android:id="@+id/bt_play_pcm_stream"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="10dp"
+        android:layout_marginEnd="10dp"
+        android:onClick="startStreamPCM"
+        android:text="点击播放PCM音频(STREAM模式)" />
+
+    <Button
+        android:id="@+id/bt_play_pcm_static"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="10dp"
+        android:layout_marginEnd="10dp"
+        android:onClick="startStaticPCM"
+        android:text="点击播放PCM音频(STATIC模式)" />
+
+
+</LinearLayout>
