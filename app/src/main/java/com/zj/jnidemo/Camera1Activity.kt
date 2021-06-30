@@ -11,22 +11,17 @@ import android.view.View
 /**
  * Camera1相机的开启与预览
  */
-class Camera1Activity : AppCompatActivity(), SurfaceHolder.Callback {
+class Camera1Activity : AppCompatActivity() {
 
-    var mFontCameraId: Int = 0
-    var mFontCameraInfo: Camera.CameraInfo? = null
-
-    var mBackCameraId: Int = 0
-    var mBackCameraInfo: Camera.CameraInfo? = null
-
-    var camera: Camera? = null
+    lateinit var camera1Helper: Camera1Helper
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_camera1)
         requestPermissions(arrayOf(Manifest.permission.CAMERA), 100)
         val surfaceView = findViewById<SurfaceView>(R.id.surfaceView)
-        surfaceView.holder.addCallback(this)
+        camera1Helper = Camera1Helper(this)
+        camera1Helper.setSurfaceHolder(surfaceView.holder)
     }
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
@@ -39,27 +34,20 @@ class Camera1Activity : AppCompatActivity(), SurfaceHolder.Callback {
                 Camera.getCameraInfo(index, info)
                 if (info.facing == Camera.CameraInfo.CAMERA_FACING_FRONT) {
                     //前置摄像头
-                    mFontCameraId = index
-                    mFontCameraInfo = info
+                    camera1Helper.setFont(index, info)
                 } else if (info.facing == Camera.CameraInfo.CAMERA_FACING_BACK) {
                     //后置摄像头
-                    mBackCameraId = index
-                    mBackCameraInfo = info
-                    camera =  Camera.open(mBackCameraId)
+                    camera1Helper.setBack(index, info)
                 }
             }
         }
     }
 
-    fun switchCamera(view: View) {}
-
-    override fun surfaceCreated(holder: SurfaceHolder) {
+    fun switchCamera(view: View) {
+        camera1Helper.switchCamera()
     }
 
-    override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
-
-    }
-
-    override fun surfaceDestroyed(holder: SurfaceHolder) {
+    fun picture(view: View) {
+        camera1Helper.picture()
     }
 }
