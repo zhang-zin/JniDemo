@@ -4,7 +4,6 @@ import android.Manifest
 import android.hardware.Camera
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
-import android.view.SurfaceHolder
 import android.view.SurfaceView
 import android.view.View
 
@@ -48,6 +47,6 @@ class Camera1Activity : AppCompatActivity() {
     }
 
     fun picture(view: View) {
-        camera1Helper.picture()
+        camera1Helper.picture(this)
     }
 }

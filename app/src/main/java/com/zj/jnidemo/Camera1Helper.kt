@@ -1,16 +1,24 @@
 package com.zj.jnidemo
 
+import android.app.Activity
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.ImageFormat
+import android.graphics.Matrix
 import android.hardware.Camera
 import android.hardware.Camera.CameraInfo
+import android.os.Environment
 import android.util.Log
 import android.view.Surface
 import android.view.SurfaceHolder
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleObserver
 import androidx.lifecycle.OnLifecycleEvent
 import java.io.File
+import java.io.FileOutputStream
+import java.io.IOException
 import kotlin.math.abs
 
 class Camera1Helper(private val activity: ComponentActivity) : SurfaceHolder.Callback, LifecycleObserver {
@@ -155,7 +163,7 @@ class Camera1Helper(private val activity: ComponentActivity) : SurfaceHolder.Cal
             Surface.ROTATION_180 -> degrees = 180
             Surface.ROTATION_270 -> degrees = 270
         }
-        val result = if (info.facing == Camera.CameraInfo.CAMERA_FACING_BACK) {
+        val result = if (info.facing == CameraInfo.CAMERA_FACING_BACK) {
             //后置摄像头
             (info.orientation - degrees + 360) % 360
         } else if (info.facing == Camera.CameraInfo.CAMERA_FACING_FRONT) {
@@ -185,7 +193,7 @@ class Camera1Helper(private val activity: ComponentActivity) : SurfaceHolder.Cal
     /**
      * 拍照
      */
-    fun picture() {
+    fun picture(context: Activity) {
         camera?.run {
             /**
              * ShutterCallback shutter : 拍照瞬间调用，如果空回调，则由声音，传 null ，则没效果
@@ -196,13 +204,51 @@ class Camera1Helper(private val activity: ComponentActivity) : SurfaceHolder.Cal
                     { },
                     null
             ) { data, camera ->
-                HiExecutor.execute(runnable = object : HiExecutor.Callable<File>() {
-                    override fun onBackground(): File {
-                        TODO("Not yet implemented")
+                HiExecutor.execute(runnable = object : HiExecutor.Callable<File?>() {
+
+                    lateinit var imageFile: File
+
+                    override fun onPrepare() {
+                        super.onPrepare()
+                        val parentPath = context.getExternalFilesDir("")?.absolutePath
+                                ?: Environment.getExternalStorageDirectory().absolutePath
+                        val parent = File("$parentPath/image")
+                        if (!parent.exists()) {
+                            parent.mkdirs()
+                        }
+                        imageFile = File(parent, "text.jpg")
                     }
 
-                    override fun onCompleted(t: File) {
-                        TODO("Not yet implemented")
+                    override fun onBackground(): File? {
+                        var bitmap = BitmapFactory.decodeByteArray(data, 0, data.size)
+                                ?: return null
+                        var fos: FileOutputStream? = null
+                        try {
+                            fos = FileOutputStream(imageFile)
+                            //保存前先调整方向
+                            val info = if (curCameraId == mFontCameraId) mFontCameraInfo else mBackCameraInfo!!
+                            bitmap = if (info?.facing == CameraInfo.CAMERA_FACING_BACK) {
+                                rotate(bitmap, 90f)
+                            } else {
+                                rotate(bitmap, 270f)
+                            }
+                            bitmap.compress(Bitmap.CompressFormat.JPEG, 100, fos)
+                        } catch (e: IOException) {
+                            e.printStackTrace()
+                        } finally {
+                            fos?.close()
+                            bitmap.recycle()
+                        }
+                        return imageFile
+                    }
+
+                    override fun onCompleted(t: File?) {
+                        if (t != null) {
+                            Toast.makeText(context, "图片保存成功", Toast.LENGTH_SHORT).show();
+                        } else {
+                            Toast.makeText(context, "图片保存失败", Toast.LENGTH_SHORT).show();
+                        }
+
                     }
                 })
             }
@@ -215,5 +261,10 @@ class Camera1Helper(private val activity: ComponentActivity) : SurfaceHolder.Cal
         camera = null
     }
 
+    fun rotate(bitmap: Bitmap, degress: Float): Bitmap {
+        val matrix = Matrix()
+        matrix.postRotate(degress)
+        return Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true);
+    }
 
 }
