@@ -27,10 +27,10 @@ find_library(
 
 target_link_libraries(
         native-lib
-
         log
         jnigraphics
         opencv_java4
+        android
         #lib_opencv
 )
 

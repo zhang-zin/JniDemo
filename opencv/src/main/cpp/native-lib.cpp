@@ -5,6 +5,7 @@
 #include <opencv2/opencv.hpp>
 #include <opencv2/imgproc/types_c.h>
 #include "util.h"
+#include "FaceTracker.h"
 
 #define DEFAULT_CARD_WIDTH 640
 #define DEFAULT_CARD_HEIGHT 400
@@ -14,6 +15,7 @@
 using namespace cv;
 using namespace std;
 
+//region 身份证识别
 extern "C" JNIEXPORT void JNICALL Java_org_opencv_android_Utils_nBitmapToMat2
         (JNIEnv *env, jclass, jobject bitmap, jlong m_addr, jboolean needUnPremultiplyAlpha);
 extern "C" JNIEXPORT void JNICALL Java_org_opencv_android_Utils_nMatToBitmap
@@ -93,3 +95,107 @@ Java_com_zj_opencv_ImageProcess_getIdNumber(JNIEnv *env, jobject thiz, jobject s
 
     return bitmap;
 }
+//endregion
+
+//region 人脸识别
+extern "C"
+JNIEXPORT jlong JNICALL
+Java_com_zj_opencv_FaceTracker_nativeCreateObject(JNIEnv *env, jobject thiz, jstring model_) {
+    const char *model = env->GetStringUTFChars(model_, nullptr);
+    auto *faceTracker = new FaceTracker(model);
+    env->ReleaseStringUTFChars(model_, model);
+    return reinterpret_cast<jlong>(faceTracker);
+}
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_zj_opencv_FaceTracker_nativeSetSurface(JNIEnv *env, jobject thiz, jlong native_object,
+                                                jobject surface) {
+    if (native_object != 0) {
+        auto *tracker = reinterpret_cast<FaceTracker *>(native_object);
+        if (!surface) {
+            tracker->setNativeWindow(nullptr);
+            return;
+        }
+        tracker->setNativeWindow(ANativeWindow_fromSurface(env, surface));
+    }
+}
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_zj_opencv_FaceTracker_nativeStart(JNIEnv *env, jobject thiz, jlong native_object) {
+    if (native_object != 0) {
+        auto *tracker = reinterpret_cast<FaceTracker *>(native_object);
+        // 开启人脸识别追踪器
+        tracker->tracker->run();
+    }
+}
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_zj_opencv_FaceTracker_nativeStop(JNIEnv *env, jobject thiz, jlong native_object) {
+    if (native_object != 0) {
+        auto *tracker = reinterpret_cast<FaceTracker *>(native_object);
+        tracker->tracker->stop();
+    }
+}
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_zj_opencv_FaceTracker_nativeRelease(JNIEnv *env, jobject thiz, jlong native_object) {
+    if (native_object != 0) {
+        auto *tracker = reinterpret_cast<FaceTracker *>(native_object);
+        tracker->tracker->stop();
+        delete tracker;
+    }
+}
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_zj_opencv_FaceTracker_nativeDetect(JNIEnv *env, jobject thiz, jlong native_object,
+                                            jbyteArray input_image, jint width, jint height,
+                                            jint rotation_degrees, jboolean mirror) {
+    if (native_object == 0) {
+        return;
+    }
+    auto *tracker = reinterpret_cast<FaceTracker * >(native_object);
+    jbyte *inputImage = env->GetByteArrayElements(input_image, nullptr);
+
+    //I420
+    Mat src(height * 3 / 2, width, CV_8UC1, inputImage);
+    //转成RGBA
+    cvtColor(src, src, CV_YUV2RGBA_I420);
+
+    //旋转
+    if (rotation_degrees == 90) {
+        rotate(src, src, ROTATE_90_CLOCKWISE);
+    } else if (rotation_degrees == 270) {
+        rotate(src, src, ROTATE_90_COUNTERCLOCKWISE);
+    }
+    //镜像问题
+    if (mirror) {
+        flip(src, src, 1);
+    }
+
+    Mat gray;
+    cvtColor(src, gray, CV_RGB2GRAY);
+    equalizeHist(gray, gray);
+
+    tracker->tracker->process(gray);
+    std::vector<Rect> faces;
+    tracker->tracker->getObjects(faces);
+
+    for (auto &face : faces) {
+        //画矩形
+        rectangle(src, face, Scalar(255, 0, 0));
+    }
+
+    //输出到window
+    tracker->draw(src);
+
+    src.release();
+    gray.release();
+
+    env->ReleaseByteArrayElements(input_image, inputImage, 0);
+}
+//endregion
