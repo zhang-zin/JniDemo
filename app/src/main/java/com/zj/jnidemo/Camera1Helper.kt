@@ -126,11 +126,8 @@ class Camera1Helper(private val activity: ComponentActivity) : SurfaceHolder.Cal
         val uiRatio = longSize * 1.0f / shortSize
         var minRatio = uiRatio
         var bestSize: Camera.Size? = null
-        Log.e("zhang", "预览画面分辨率，shortSize: " + shortSize + " longSize: " + longSize)
         for (previewSize in sizes) {
-            Log.e("zhang", "摄像头支持的分辨率，cameraWidth: " + previewSize.width + " cameraHeight: " + previewSize.height)
             val cameraRatio = previewSize.width * 1.0f / previewSize.height
-
             //如果找不到比例相同的，找一个最近的,防止预览变形
             val offset = abs(cameraRatio - uiRatio)
             if (offset < minRatio) {
