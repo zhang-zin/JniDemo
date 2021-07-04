@@ -5,6 +5,8 @@ import android.graphics.SurfaceTexture
 import android.hardware.Camera
 import android.opengl.GLES20.*
 import android.opengl.GLSurfaceView
+import com.zj.opengl.filter.CameraFilter
+import com.zj.opengl.filter.ScreenFilter
 import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
 
@@ -12,9 +14,10 @@ class MyGlRenderer(private val glSurfaceView: MyGlSurfaceView) : GLSurfaceView.R
     SurfaceTexture.OnFrameAvailableListener {
 
     // 纹理id
-    private val textureId = IntArray(1)
+    private val mTextureId = IntArray(1)
     private var surfaceTexture: SurfaceTexture? = null
     private var screenFilter: ScreenFilter? = null
+    private var cameraFilter: CameraFilter? = null
     var mtx = FloatArray(16) // 矩阵数据，变换矩阵
 
 
@@ -25,11 +28,12 @@ class MyGlRenderer(private val glSurfaceView: MyGlSurfaceView) : GLSurfaceView.R
      */
     override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
 
-        glGenTextures(textureId.size, textureId, 0)
+        glGenTextures(mTextureId.size, mTextureId, 0)
         //实例化纹理对象
-        surfaceTexture = SurfaceTexture(textureId[0])
+        surfaceTexture = SurfaceTexture(mTextureId[0])
         surfaceTexture!!.setOnFrameAvailableListener(this)
         screenFilter = ScreenFilter(glSurfaceView.context)
+        cameraFilter = CameraFilter(glSurfaceView.context)
     }
 
     override fun onSurfaceChanged(gl: GL10?, width: Int, height: Int) {
@@ -40,6 +44,7 @@ class MyGlRenderer(private val glSurfaceView: MyGlSurfaceView) : GLSurfaceView.R
             480
         )
         cameraHelper.startPreview(surfaceTexture)
+        cameraFilter?.onReady(width, height)
         screenFilter?.onReady(width, height)
     }
 
@@ -59,7 +64,8 @@ class MyGlRenderer(private val glSurfaceView: MyGlSurfaceView) : GLSurfaceView.R
             //绘制摄像头数据
             updateTexImage()
             getTransformMatrix(mtx)
-            screenFilter?.onDrawFrame(textureId[0], mtx)
+            val textureId = cameraFilter?.onDrawFrame(mTextureId[0], mtx) ?: 0
+            screenFilter?.onDrawFrame(textureId, mtx)
         }
     }
 
