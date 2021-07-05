@@ -10,11 +10,11 @@ open class BaseFilter(context: Context, vertexSourceId: Int, fragmentSourceId: I
     protected val vertexBuffer: FloatBuffer   //顶点坐标数据缓冲区
     protected val textureBuffer: FloatBuffer  //纹理坐标数据缓冲区
 
-    protected val mProgramId: Int // 着色器程序
-    protected val vPosition: Int  // 顶点着色器：顶点位置
-    protected val vCoord: Int     // 顶点着色器：纹理坐标
-    protected val vMatrix: Int    // 顶点着色器：变换矩阵
-    protected val vTexture: Int   // 片元着色器：采样器
+    protected val mProgramId: Int //着色器程序
+    protected val vPosition: Int  //顶点着色器：顶点位置
+    protected val vCoord: Int     //顶点着色器：纹理坐标
+    protected val vMatrix: Int    //顶点着色器：变换矩阵
+    protected val vTexture: Int   //片元着色器：采样器
 
     protected var mWidth: Int = 0
     protected var mHeight: Int = 0
