@@ -11,7 +11,7 @@ import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
 
 class MyGlRenderer(private val glSurfaceView: MyGlSurfaceView) : GLSurfaceView.Renderer,
-    SurfaceTexture.OnFrameAvailableListener {
+        SurfaceTexture.OnFrameAvailableListener {
 
     // 纹理id
     private val mTextureId = IntArray(1)
@@ -38,11 +38,10 @@ class MyGlRenderer(private val glSurfaceView: MyGlSurfaceView) : GLSurfaceView.R
 
     override fun onSurfaceChanged(gl: GL10?, width: Int, height: Int) {
         val cameraHelper = CameraHelper(
-            glSurfaceView.context as Activity,
-            Camera.CameraInfo.CAMERA_FACING_FRONT,
-            800,
-            480
-        )
+                glSurfaceView.context as Activity,
+                Camera.CameraInfo.CAMERA_FACING_FRONT,
+                width,
+                height)
         cameraHelper.startPreview(surfaceTexture)
         cameraFilter?.onReady(width, height)
         screenFilter?.onReady(width, height)
