@@ -3,23 +3,38 @@ package com.zj.opengl
 import android.app.Activity
 import android.graphics.SurfaceTexture
 import android.hardware.Camera
+import android.opengl.EGL14
 import android.opengl.GLES20.*
 import android.opengl.GLSurfaceView
+import android.os.Environment
+import android.util.Log
 import com.zj.opengl.filter.CameraFilter
 import com.zj.opengl.filter.ScreenFilter
+import java.io.File
 import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
 
 class MyGlRenderer(private val glSurfaceView: MyGlSurfaceView) : GLSurfaceView.Renderer,
-        SurfaceTexture.OnFrameAvailableListener {
+    SurfaceTexture.OnFrameAvailableListener {
 
     // 纹理id
     private val mTextureId = IntArray(1)
     private var surfaceTexture: SurfaceTexture? = null
     private var screenFilter: ScreenFilter? = null
     private var cameraFilter: CameraFilter? = null
-    var mtx = FloatArray(16) // 矩阵数据，变换矩阵
+    private var mtx = FloatArray(16) // 矩阵数据，变换矩阵
+    private val parent: File
+    private lateinit var mMediaRecorder: MyMediaRecorder
+    private lateinit var mCameraHelper: CameraHelper
 
+    init {
+        val parentPath = glSurfaceView.context.getExternalFilesDir("")?.absolutePath
+            ?: Environment.getExternalStorageDirectory().absolutePath
+        parent = File("$parentPath/record")
+        if (!parent.exists()) {
+            parent.mkdirs()
+        }
+    }
 
     /**
      * Surface创建时
@@ -37,14 +52,23 @@ class MyGlRenderer(private val glSurfaceView: MyGlSurfaceView) : GLSurfaceView.R
     }
 
     override fun onSurfaceChanged(gl: GL10?, width: Int, height: Int) {
-        val cameraHelper = CameraHelper(
-                glSurfaceView.context as Activity,
-                Camera.CameraInfo.CAMERA_FACING_FRONT,
-                width,
-                height)
-        cameraHelper.startPreview(surfaceTexture)
+        mCameraHelper = CameraHelper(
+            glSurfaceView.context as Activity,
+            Camera.CameraInfo.CAMERA_FACING_FRONT,
+            width,
+            height
+        )
+        mCameraHelper.startPreview(surfaceTexture)
         cameraFilter?.onReady(width, height)
         screenFilter?.onReady(width, height)
+
+
+        val file = File(parent, "${System.currentTimeMillis()}.mp4")
+
+        //初始化录制工具类
+        val eglContext = EGL14.eglGetCurrentContext()
+        mMediaRecorder =
+            MyMediaRecorder(width, height, file.absolutePath, eglContext, glSurfaceView.context)
     }
 
     /**
@@ -65,10 +89,25 @@ class MyGlRenderer(private val glSurfaceView: MyGlSurfaceView) : GLSurfaceView.R
             getTransformMatrix(mtx)
             val textureId = cameraFilter?.onDrawFrame(mTextureId[0], mtx) ?: 0
             screenFilter?.onDrawFrame(textureId, mtx)
+            mMediaRecorder.encodeFrame(textureId, timestamp)
         }
     }
 
     override fun onFrameAvailable(surfaceTexture: SurfaceTexture?) {
         glSurfaceView.requestRender()
+    }
+
+    fun surfaceDestroyed() {
+        mCameraHelper.stopPreview()
+    }
+
+    fun startRecording(speed: Float) {
+        Log.e("zhang", "startRecording$speed")
+        mMediaRecorder.start(speed)
+    }
+
+    fun stopRecording() {
+        Log.e("zhang", "stopRecording")
+        mMediaRecorder.stop()
     }
 }

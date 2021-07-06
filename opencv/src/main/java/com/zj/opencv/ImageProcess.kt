@@ -2,7 +2,7 @@ package com.zj.opencv
 
 import android.graphics.Bitmap
 
-object  ImageProcess {
+object ImageProcess {
     init {
         System.loadLibrary("native-lib")
     }

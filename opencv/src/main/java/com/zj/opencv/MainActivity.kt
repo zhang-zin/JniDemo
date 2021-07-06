@@ -181,7 +181,7 @@ class MainActivity : AppCompatActivity() {
      * 查找id
      */
     fun searchId(view: View) {
-        tesstext.setText(null)
+        tesstext.text = null
         resultImage = null
         val bitmapResult = ImageProcess.getIdNumber(fullImage, Bitmap.Config.ARGB_8888)
         fullImage?.recycle()
